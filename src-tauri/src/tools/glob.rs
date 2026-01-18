@@ -1,6 +1,5 @@
 use crate::agent::ToolDefinition;
 use serde_json::json;
-use std::path::Path;
 
 pub fn definition() -> ToolDefinition {
     ToolDefinition {
@@ -77,7 +76,7 @@ pub fn execute(
                     results.push(display_path);
                 }
             }
-            Err(e) => {
+            Err(_) => {
                 // Skip files we can't access
                 continue;
             }

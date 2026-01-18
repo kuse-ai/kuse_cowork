@@ -77,7 +77,7 @@ pub fn run() {
             let app_state = app.state::<Arc<AppState>>();
             let db = app_state.db.clone();
             let mcp_manager = app_state.mcp_manager.clone();
-            let app_handle = app.handle().clone();
+            let _app_handle = app.handle().clone();
 
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().unwrap();

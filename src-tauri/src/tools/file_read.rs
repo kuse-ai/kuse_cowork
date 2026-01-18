@@ -86,9 +86,9 @@ pub fn execute(
 
 fn resolve_path(path_str: &str, project_path: Option<&str>) -> Result<std::path::PathBuf, String> {
     // Handle home directory expansion
-    let expanded_path = if path_str.starts_with("~/") {
+    let expanded_path = if let Some(stripped) = path_str.strip_prefix("~/") {
         match dirs::home_dir() {
-            Some(home) => home.join(&path_str[2..]),
+            Some(home) => home.join(stripped),
             None => return Err("Could not determine home directory".to_string()),
         }
     } else if path_str == "~" {

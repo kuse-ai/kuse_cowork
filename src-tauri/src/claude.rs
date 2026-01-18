@@ -10,6 +10,7 @@ pub enum ClaudeError {
     #[error("API error: {0}")]
     Api(String),
     #[error("Parse error: {0}")]
+    #[allow(dead_code)]
     Parse(String),
 }
 
@@ -37,6 +38,7 @@ struct ClaudeResponse {
 #[derive(Debug, Deserialize)]
 struct ContentBlock {
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     content_type: String,
     text: Option<String>,
 }
@@ -51,6 +53,7 @@ struct StreamEvent {
 #[derive(Debug, Deserialize)]
 struct Delta {
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     delta_type: Option<String>,
     text: Option<String>,
 }
@@ -157,8 +160,7 @@ impl ClaudeClient {
                 let line = buffer[..pos].to_string();
                 buffer = buffer[pos + 1..].to_string();
 
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
+                if let Some(data) = line.strip_prefix("data: ") {
                     if data == "[DONE]" {
                         continue;
                     }

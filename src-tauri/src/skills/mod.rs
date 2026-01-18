@@ -86,10 +86,10 @@ fn parse_skill_metadata(content: &str) -> Option<SkillMetadata> {
 
     for line in yaml_content.lines() {
         let line = line.trim();
-        if line.starts_with("name:") {
-            name = Some(line[5..].trim().to_string());
-        } else if line.starts_with("description:") {
-            description = Some(line[12..].trim().to_string());
+        if let Some(stripped) = line.strip_prefix("name:") {
+            name = Some(stripped.trim().to_string());
+        } else if let Some(stripped) = line.strip_prefix("description:") {
+            description = Some(stripped.trim().to_string());
         }
     }
 
@@ -106,16 +106,14 @@ pub fn get_available_skills() -> Vec<SkillMetadata> {
     let mut skills = Vec::new();
 
     if let Ok(entries) = fs::read_dir(&skills_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let skill_dir = entry.path();
-                if skill_dir.is_dir() {
-                    let skill_file = skill_dir.join("SKILL.md");
-                    if skill_file.exists() {
-                        if let Ok(content) = fs::read_to_string(&skill_file) {
-                            if let Some(metadata) = parse_skill_metadata(&content) {
-                                skills.push(metadata);
-                            }
+        for entry in entries.flatten() {
+            let skill_dir = entry.path();
+            if skill_dir.is_dir() {
+                let skill_file = skill_dir.join("SKILL.md");
+                if skill_file.exists() {
+                    if let Ok(content) = fs::read_to_string(&skill_file) {
+                        if let Some(metadata) = parse_skill_metadata(&content) {
+                            skills.push(metadata);
                         }
                     }
                 }

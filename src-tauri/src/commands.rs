@@ -1,4 +1,4 @@
-use crate::agent::{AgentConfig, AgentContent, AgentEvent, AgentLoop, AgentMessage, PlanStepInfo};
+use crate::agent::{AgentConfig, AgentContent, AgentEvent, AgentLoop, AgentMessage};
 use crate::claude::{ClaudeClient, Message as ClaudeMessage};
 use crate::database::{Conversation, Database, Message, PlanStep, Settings, Task, TaskMessage};
 use crate::mcp::{MCPManager, MCPServerConfig, MCPServerStatus, MCPToolCall, MCPToolResult};
@@ -435,9 +435,11 @@ pub async fn send_chat_with_tools(
         .with_mcp_manager(state.mcp_manager.clone());
 
     // Build agent-style config for tools
-    let mut config = AgentConfig::default();
-    config.project_path = request.project_path;
-    config.max_turns = 10; // Limit turns in chat mode
+    let mut config = AgentConfig {
+        project_path: request.project_path,
+        max_turns: 10, // Limit turns in chat mode
+        ..Default::default()
+    };
 
     // System prompt for chat with tools - include MCP servers info
     let mcp_servers = state.mcp_manager.get_server_statuses().await;
@@ -526,8 +528,7 @@ Be concise and helpful. Explain what you're doing when using tools.{}"#, mcp_inf
                 let line = buffer[..pos].to_string();
                 buffer = buffer[pos + 1..].to_string();
 
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
+                if let Some(data) = line.strip_prefix("data: ") {
                     if data == "[DONE]" {
                         continue;
                     }

@@ -3,10 +3,10 @@ use super::types::*;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 use std::sync::Arc;
-use serde_json::{json, Value};
 
 pub struct MCPClient {
     http_client: HttpMcpClient,
+    #[allow(dead_code)]
     url: String,
 }
 

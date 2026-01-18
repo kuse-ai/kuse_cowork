@@ -358,6 +358,7 @@ impl Database {
         })
     }
 
+    #[allow(dead_code)]
     pub fn update_message_content(&self, id: &str, content: &str) -> Result<(), DbError> {
         let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
 
@@ -576,6 +577,7 @@ impl Database {
         })
     }
 
+    #[allow(dead_code)]
     pub fn update_task_message_content(&self, id: &str, content: &str) -> Result<(), DbError> {
         let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
 

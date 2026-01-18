@@ -110,7 +110,7 @@ fn list_single(path: &Path, results: &mut Vec<String>) -> Result<(), String> {
 }
 
 fn list_recursive(
-    base: &Path,
+    _base: &Path,
     path: &Path,
     depth: usize,
     max_depth: usize,
@@ -127,18 +127,16 @@ fn list_recursive(
 
     let mut items: Vec<(String, bool, std::path::PathBuf)> = Vec::new();
 
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
-            let name = entry.file_name().to_string_lossy().to_string();
+    for entry in entries.flatten() {
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let name = entry.file_name().to_string_lossy().to_string();
 
-            // Skip hidden files and common ignore patterns
-            if name.starts_with('.') || name == "node_modules" || name == "target" || name == "__pycache__" {
-                continue;
-            }
-
-            items.push((name, is_dir, entry.path()));
+        // Skip hidden files and common ignore patterns
+        if name.starts_with('.') || name == "node_modules" || name == "target" || name == "__pycache__" {
+            continue;
         }
+
+        items.push((name, is_dir, entry.path()));
     }
 
     items.sort_by(|a, b| {
@@ -154,7 +152,7 @@ fn list_recursive(
     for (name, is_dir, full_path) in items {
         if is_dir {
             results.push(format!("{}📁 {}/", indent, name));
-            list_recursive(base, &full_path, depth + 1, max_depth, results)?;
+            list_recursive(_base, &full_path, depth + 1, max_depth, results)?;
         } else {
             results.push(format!("{}📄 {}", indent, name));
         }

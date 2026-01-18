@@ -1,4 +1,4 @@
-use crate::agent::{AgentConfig, AgentContent, AgentMessage, ToolDefinition, ToolResult};
+use crate::agent::{AgentConfig, AgentContent, AgentMessage, ToolDefinition};
 use crate::mcp::{MCPManager, MCPTool};
 use crate::tools;
 use serde::{Deserialize, Serialize};

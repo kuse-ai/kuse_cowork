@@ -1,6 +1,6 @@
 use crate::agent::{
     AgentConfig, AgentContent, AgentEvent, AgentMessage, ContentBlock, MessageBuilder,
-    PlanStepInfo, ToolExecutor, ToolResult, ToolUse,
+    PlanStepInfo, ToolExecutor, ToolUse,
 };
 use crate::mcp::MCPManager;
 use regex::Regex;
@@ -13,8 +13,11 @@ pub struct AgentLoop {
     api_key: String,
     base_url: String,
     config: AgentConfig,
+    #[allow(dead_code)]
     model: String,
+    #[allow(dead_code)]
     max_tokens: u32,
+    #[allow(dead_code)]
     temperature: Option<f32>,
     tool_executor: ToolExecutor,
     message_builder: MessageBuilder,
@@ -204,10 +207,7 @@ impl AgentLoop {
             return Err(format!("API error: {}", error_text));
         }
 
-        // For streaming, we need to handle SSE
-        // For now, use non-streaming for simplicity
-        let mut request_non_stream = request.clone();
-        // Actually, let's parse streaming response
+        // Handle streaming response
 
         self.handle_stream_response(response, event_tx).await
     }
@@ -236,8 +236,7 @@ impl AgentLoop {
                 let line = buffer[..pos].to_string();
                 buffer = buffer[pos + 1..].to_string();
 
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
+                if let Some(data) = line.strip_prefix("data: ") {
                     if data == "[DONE]" {
                         continue;
                     }
@@ -377,7 +376,7 @@ impl AgentLoop {
         let plan_content = captures.get(1)?.as_str();
 
         // Parse numbered steps like "1. Description"
-        let step_regex = Regex::new(r"(\d+)\.\s*(.+?)(?=\n\d+\.|$)").ok()?;
+        let step_regex = Regex::new(r"(\d+)\.\s*(.+)").ok()?;
         let mut steps = Vec::new();
 
         for cap in step_regex.captures_iter(plan_content) {

@@ -60,7 +60,7 @@ pub fn execute(
         .get("timeout")
         .and_then(|v| v.as_u64())
         .unwrap_or(60)
-        .min(300) as u64;
+        .min(300);
 
     // Security check
     for pattern in BLOCKED_PATTERNS {
@@ -102,7 +102,7 @@ pub fn execute(
 
     if !stderr.is_empty() {
         if !result.is_empty() {
-            result.push_str("\n");
+            result.push('\n');
         }
         result.push_str("[stderr]\n");
         result.push_str(&stderr);
@@ -129,7 +129,7 @@ pub fn execute(
 }
 
 fn wait_with_timeout(
-    mut child: std::process::Child,
+    child: std::process::Child,
     timeout: Duration,
 ) -> Result<std::process::Output, String> {
     use std::thread;

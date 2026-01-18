@@ -88,9 +88,9 @@ pub fn execute(
     let mut match_count = 0;
 
     if path.is_file() {
-        search_file(&path, &regex, context, limit, &mut results, &mut match_count, project_path)?;
+        search_file(path, &regex, context, limit, &mut results, &mut match_count, project_path)?;
     } else if path.is_dir() {
-        search_directory(&path, &regex, file_glob, context, limit, &mut results, &mut match_count, project_path)?;
+        search_directory(path, &regex, file_glob, context, limit, &mut results, &mut match_count, project_path)?;
     } else {
         return Err(format!("Path not found: {}", search_path));
     }
@@ -141,8 +141,8 @@ fn search_file(
             if results.len() < limit {
                 // Add context lines before
                 let start = i.saturating_sub(context);
-                for j in start..i {
-                    results.push(format!("{}:{}: {}", display_path, j + 1, lines[j]));
+                for (j, line_content) in lines.iter().enumerate().take(i).skip(start) {
+                    results.push(format!("{}:{}: {}", display_path, j + 1, line_content));
                 }
 
                 // Add matching line
@@ -150,8 +150,8 @@ fn search_file(
 
                 // Add context lines after
                 let end = (i + context + 1).min(lines.len());
-                for j in (i + 1)..end {
-                    results.push(format!("{}:{}: {}", display_path, j + 1, lines[j]));
+                for (j, line_content) in lines.iter().enumerate().take(end).skip(i + 1) {
+                    results.push(format!("{}:{}: {}", display_path, j + 1, line_content));
                 }
 
                 if context > 0 {
@@ -164,6 +164,7 @@ fn search_file(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn search_directory(
     path: &Path,
     regex: &regex::Regex,
