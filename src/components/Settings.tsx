@@ -160,6 +160,43 @@ const Settings: Component = () => {
             </span>
           </div>
 
+          {/* OpenAI Organization and Project ID - only show for OpenAI provider */}
+          <Show when={currentProviderInfo()?.id === "openai"}>
+            <div class="form-group">
+              <label for="openaiOrg">
+                Organization ID
+                <span class="optional-tag">(Optional)</span>
+              </label>
+              <input
+                id="openaiOrg"
+                type="text"
+                value={settings().openaiOrganization || ""}
+                onInput={(e) => updateSetting("openaiOrganization", e.currentTarget.value || undefined)}
+                placeholder="org-..."
+              />
+              <span class="hint">
+                Your OpenAI organization ID (if you belong to multiple organizations)
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label for="openaiProject">
+                Project ID
+                <span class="optional-tag">(Optional)</span>
+              </label>
+              <input
+                id="openaiProject"
+                type="text"
+                value={settings().openaiProject || ""}
+                onInput={(e) => updateSetting("openaiProject", e.currentTarget.value || undefined)}
+                placeholder="proj_..."
+              />
+              <span class="hint">
+                Your OpenAI project ID (for project-level access control)
+              </span>
+            </div>
+          </Show>
+
           <div class="form-group">
             <label for="maxTokens">Max Tokens</label>
             <input

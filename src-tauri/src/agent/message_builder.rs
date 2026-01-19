@@ -10,6 +10,7 @@ pub struct ClaudeApiRequest {
     pub max_tokens: u32,
     pub system: String,
     pub messages: Vec<ApiMessage>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tools: Vec<ToolDefinition>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,

@@ -129,23 +129,63 @@ class AnthropicProvider implements AIProvider {
 class OpenAIProvider implements AIProvider {
   name = "openai";
 
+  private buildHeaders(settings: Settings): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${settings.apiKey}`,
+    };
+    // Add optional OpenAI organization and project headers
+    if (settings.openaiOrganization) {
+      headers["OpenAI-Organization"] = settings.openaiOrganization;
+    }
+    if (settings.openaiProject) {
+      headers["OpenAI-Project"] = settings.openaiProject;
+    }
+    return headers;
+  }
+
+  // Check if model is a reasoning model (o1, o3, etc.) that doesn't support temperature
+  private isReasoningModel(model: string): boolean {
+    const lower = model.toLowerCase();
+    return lower.startsWith("o1") || lower.startsWith("o3") || lower.includes("-o1") || lower.includes("-o3");
+  }
+
+  // Check if model is a legacy model that uses max_tokens instead of max_completion_tokens
+  private isLegacyModel(model: string): boolean {
+    const lower = model.toLowerCase();
+    // GPT-3.5 and base GPT-4 (not GPT-4o, GPT-4-turbo) use legacy max_tokens
+    return lower.includes("gpt-3.5") || (lower.includes("gpt-4") && !lower.includes("gpt-4o") && !lower.includes("gpt-4-turbo"));
+  }
+
   async sendMessage(
     messages: AIMessage[],
     settings: Settings,
     onStream?: (text: string) => void
   ): Promise<string> {
+    const body: Record<string, unknown> = {
+      model: settings.model,
+      stream: !!onStream,
+      messages,
+    };
+
+    // Add max tokens with correct parameter name based on model
+    if (settings.maxTokens) {
+      if (this.isLegacyModel(settings.model)) {
+        body.max_tokens = settings.maxTokens;
+      } else {
+        body.max_completion_tokens = settings.maxTokens;
+      }
+    }
+
+    // Add temperature only for non-reasoning models
+    if (!this.isReasoningModel(settings.model) && settings.temperature !== undefined) {
+      body.temperature = settings.temperature;
+    }
+
     const response = await fetch(`${settings.baseUrl}/v1/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${settings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        max_tokens: settings.maxTokens,
-        stream: !!onStream,
-        messages,
-      }),
+      headers: this.buildHeaders(settings),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -203,17 +243,27 @@ class OpenAIProvider implements AIProvider {
 
   async testConnection(settings: Settings): Promise<string> {
     try {
+      const body: Record<string, unknown> = {
+        model: settings.model,
+        messages: [{ role: "user", content: "Hi" }],
+      };
+
+      // Add max tokens with correct parameter name based on model
+      if (this.isLegacyModel(settings.model)) {
+        body.max_tokens = 10;
+      } else {
+        body.max_completion_tokens = 10;
+      }
+
+      // Add temperature only for non-reasoning models
+      if (!this.isReasoningModel(settings.model)) {
+        body.temperature = 1;
+      }
+
       const response = await fetch(`${settings.baseUrl}/v1/chat/completions`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${settings.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: settings.model,
-          max_tokens: 10,
-          messages: [{ role: "user", content: "Hi" }],
-        }),
+        headers: this.buildHeaders(settings),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) return "success";
@@ -563,6 +613,21 @@ class OpenAICompatibleProvider implements AIProvider {
 class OpenAIResponsesProvider implements AIProvider {
   name = "openai-responses";
 
+  private buildHeaders(settings: Settings): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${settings.apiKey}`,
+    };
+    // Add optional OpenAI organization and project headers
+    if (settings.openaiOrganization) {
+      headers["OpenAI-Organization"] = settings.openaiOrganization;
+    }
+    if (settings.openaiProject) {
+      headers["OpenAI-Project"] = settings.openaiProject;
+    }
+    return headers;
+  }
+
   async sendMessage(
     messages: AIMessage[],
     settings: Settings,
@@ -587,10 +652,7 @@ class OpenAIResponsesProvider implements AIProvider {
 
     const response = await fetch(`${settings.baseUrl}/v1/responses`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${settings.apiKey}`,
-      },
+      headers: this.buildHeaders(settings),
       body: JSON.stringify(body),
     });
 
@@ -676,10 +738,7 @@ class OpenAIResponsesProvider implements AIProvider {
     try {
       const response = await fetch(`${settings.baseUrl}/v1/responses`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${settings.apiKey}`,
-        },
+        headers: this.buildHeaders(settings),
         body: JSON.stringify({
           model: settings.model,
           input: [{ role: "user", content: "Hi" }],

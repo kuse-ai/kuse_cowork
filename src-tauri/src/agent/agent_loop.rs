@@ -399,11 +399,31 @@ impl AgentLoop {
 
         let mut openai_request = serde_json::json!({
             "model": request.model,
-            "max_tokens": request.max_tokens,
-            "temperature": request.temperature.unwrap_or(0.7),
             "stream": request.stream,
             "messages": messages
         });
+
+        // Use correct max tokens parameter based on model
+        let model_lower = request.model.to_lowercase();
+        let is_legacy = model_lower.contains("gpt-3.5")
+            || (model_lower.contains("gpt-4") && !model_lower.contains("gpt-4o") && !model_lower.contains("gpt-4-turbo"));
+
+        if is_legacy {
+            openai_request["max_tokens"] = serde_json::json!(request.max_tokens);
+        } else {
+            openai_request["max_completion_tokens"] = serde_json::json!(request.max_tokens);
+        }
+
+        // Only add temperature for non-reasoning models (o1, o3, gpt-5 don't support custom temperature)
+        let is_reasoning = model_lower.starts_with("o1") || model_lower.starts_with("o3") || model_lower.starts_with("gpt-5")
+            || model_lower.contains("-o1") || model_lower.contains("-o3")
+            || model_lower.contains("o1-") || model_lower.contains("o3-");
+
+        if !is_reasoning {
+            if let Some(temp) = request.temperature {
+                openai_request["temperature"] = serde_json::json!(temp);
+            }
+        }
 
         if !tools.is_empty() {
             openai_request["tools"] = serde_json::json!(tools);

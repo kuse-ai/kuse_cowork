@@ -12,6 +12,8 @@ export interface Settings {
   maxTokens: number;
   temperature?: number;
   providerKeys: Record<string, string>;  // Provider-specific API keys
+  openaiOrganization?: string;  // Optional OpenAI Organization ID
+  openaiProject?: string;  // Optional OpenAI Project ID
 }
 
 // Provider configuration type
@@ -258,6 +260,8 @@ function fromApiSettings(api: ApiSettings): Settings {
     maxTokens: api.max_tokens,
     temperature: api.temperature ?? 0.7,
     providerKeys,
+    openaiOrganization: api.openai_organization,
+    openaiProject: api.openai_project,
   };
 }
 
@@ -276,6 +280,8 @@ function toApiSettings(settings: Settings): ApiSettings {
     max_tokens: settings.maxTokens,
     temperature: settings.temperature ?? 0.7,
     provider_keys: providerKeys,
+    openai_organization: settings.openaiOrganization,
+    openai_project: settings.openaiProject,
   };
 }
 
@@ -332,6 +338,15 @@ export function useSettings() {
     toggleSettings: () => setShowSettings((v) => !v),
     updateSetting: async <K extends keyof Settings>(key: K, value: Settings[K]) => {
       let newSettings = { ...settings(), [key]: value };
+
+      // When API key changes, also save it to providerKeys for the current provider
+      if (key === 'apiKey' && typeof value === 'string') {
+        const currentProvider = getProviderFromModel(settings().model);
+        newSettings.providerKeys = {
+          ...newSettings.providerKeys,
+          [currentProvider]: value,
+        };
+      }
 
       // When model changes, switch to that provider's stored API key
       if (key === 'model' && typeof value === 'string') {

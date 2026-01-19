@@ -240,10 +240,23 @@ pub struct LLMClient {
     api_key: String,
     base_url: String,
     provider_config: ProviderConfig,
+    openai_organization: Option<String>,
+    openai_project: Option<String>,
 }
 
 impl LLMClient {
     pub fn new(api_key: String, base_url: Option<String>, provider_id: Option<&str>, model: Option<&str>) -> Self {
+        Self::new_with_openai_headers(api_key, base_url, provider_id, model, None, None)
+    }
+
+    pub fn new_with_openai_headers(
+        api_key: String,
+        base_url: Option<String>,
+        provider_id: Option<&str>,
+        model: Option<&str>,
+        openai_organization: Option<String>,
+        openai_project: Option<String>,
+    ) -> Self {
         // Infer config from provider_id or model
         let mut config = if let Some(pid) = provider_id {
             ProviderConfig::from_preset(pid)
@@ -263,6 +276,8 @@ impl LLMClient {
             api_key,
             base_url: config.base_url.clone(),
             provider_config: config,
+            openai_organization,
+            openai_project,
         }
     }
 
@@ -323,6 +338,18 @@ impl LLMClient {
             }
             AuthType::QueryParam => {
                 // Query param handled in URL
+            }
+        }
+
+        // Add optional OpenAI organization and project headers
+        if let Some(ref org) = self.openai_organization {
+            if !org.is_empty() {
+                headers.push(("OpenAI-Organization".to_string(), org.clone()));
+            }
+        }
+        if let Some(ref project) = self.openai_project {
+            if !project.is_empty() {
+                headers.push(("OpenAI-Project".to_string(), project.clone()));
             }
         }
 
@@ -409,6 +436,27 @@ impl LLMClient {
         }
     }
 
+    /// Check if model is a reasoning model (o1, o3, gpt-5) that doesn't support custom temperature
+    /// These models only support temperature=1 (default)
+    fn is_reasoning_model(model: &str) -> bool {
+        let lower = model.to_lowercase();
+        // o1, o1-mini, o1-preview, o3, o3-mini, gpt-5, gpt-5-mini, gpt-5-nano, etc.
+        lower.starts_with("o1") || lower.starts_with("o3") || lower.starts_with("gpt-5")
+            || lower.contains("-o1") || lower.contains("-o3")
+            || lower.contains("o1-") || lower.contains("o3-")
+    }
+
+    /// Check if model supports custom temperature (for OpenAI, some models only support temperature=1)
+    fn supports_custom_temperature(model: &str) -> bool {
+        !Self::is_reasoning_model(model)
+    }
+
+    /// Check if model is a legacy model that uses max_tokens instead of max_completion_tokens
+    fn is_legacy_openai_model(model: &str) -> bool {
+        let lower = model.to_lowercase();
+        lower.contains("gpt-3.5") || (lower.contains("gpt-4") && !lower.contains("gpt-4o") && !lower.contains("gpt-4-turbo"))
+    }
+
     /// OpenAI Compatible API call
     async fn send_openai_compatible(
         &self,
@@ -422,13 +470,34 @@ impl LLMClient {
         let url = self.get_api_endpoint();
         let headers = self.build_headers();
 
-        let payload = serde_json::json!({
+        // Build payload based on model type
+        let mut payload = serde_json::json!({
             "model": model,
-            "max_tokens": max_tokens,
             "messages": messages,
             "stream": stream,
-            "temperature": temperature.unwrap_or(0.7),
         });
+
+        // Add max tokens with correct parameter name
+        if self.provider_config.api_format == ApiFormat::OpenAI {
+            if Self::is_legacy_openai_model(model) {
+                payload["max_tokens"] = serde_json::json!(max_tokens);
+            } else {
+                payload["max_completion_tokens"] = serde_json::json!(max_tokens);
+            }
+            // Only add temperature if explicitly specified AND model supports it
+            if let Some(temp) = temperature {
+                if Self::supports_custom_temperature(model) {
+                    payload["temperature"] = serde_json::json!(temp);
+                }
+                // For reasoning models, don't send temperature at all (uses default of 1)
+            }
+        } else {
+            // Other OpenAI-compatible APIs use max_tokens and always support temperature
+            payload["max_tokens"] = serde_json::json!(max_tokens);
+            if let Some(temp) = temperature {
+                payload["temperature"] = serde_json::json!(temp);
+            }
+        };
 
         let mut request = self.client.post(&url);
         for (key, value) in headers {

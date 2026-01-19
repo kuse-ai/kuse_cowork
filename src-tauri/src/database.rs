@@ -30,6 +30,12 @@ pub struct Settings {
     /// Provider-specific API keys
     #[serde(default)]
     pub provider_keys: HashMap<String, String>,
+    /// Optional OpenAI Organization ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_organization: Option<String>,
+    /// Optional OpenAI Project ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai_project: Option<String>,
 }
 
 impl Default for Settings {
@@ -42,6 +48,8 @@ impl Default for Settings {
             temperature: 0.7,
             provider: "anthropic".to_string(),
             provider_keys: HashMap::new(),
+            openai_organization: None,
+            openai_project: None,
         }
     }
 }
@@ -58,7 +66,8 @@ impl Settings {
 
         if model_lower.contains("claude") {
             "anthropic".to_string()
-        } else if model_lower.contains("gpt") && !model_lower.contains("/") {
+        } else if (model_lower.contains("gpt") || model_lower.starts_with("o1") || model_lower.starts_with("o3") || model_lower.starts_with("gpt-")) && !model_lower.contains("/") {
+            // OpenAI models: gpt-*, o1-*, o3-*
             "openai".to_string()
         } else if model_lower.contains("gemini") {
             "google".to_string()

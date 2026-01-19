@@ -10,6 +10,8 @@ export interface Settings {
   max_tokens: number;
   temperature: number;
   provider_keys: Record<string, string>;  // Provider-specific API keys
+  openai_organization?: string;  // Optional OpenAI Organization ID
+  openai_project?: string;  // Optional OpenAI Project ID
 }
 
 export interface Conversation {
