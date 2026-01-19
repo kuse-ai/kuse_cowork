@@ -1,0 +1,102 @@
+site_name: Kuse Cowork
+site_description: Open-source AI Agent Framework for Desktop
+site_url: https://kuse-cowork.github.io/kuse_cowork/
+repo_url: https://github.com/kuse-cowork/kuse_cowork
+repo_name: kuse_cowork
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 中文
+          build: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - Features:
+    - Overview: features/overview.md
+    - AI Providers: features/providers.md
+    - Agent System: features/agent.md
+    - Tools: features/tools.md
+    - Skills: features/skills.md
+    - MCP Protocol: features/mcp.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Frontend: architecture/frontend.md
+    - Backend: architecture/backend.md
+  - Development:
+    - Setup: development/setup.md
+    - Contributing: development/contributing.md
+    - Building: development/building.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kuse-cowork/kuse_cowork
+  generator: false
