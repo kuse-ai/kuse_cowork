@@ -1,32 +1,47 @@
-import { Component, For, createSignal, createMemo } from "solid-js";
-import { useSettings, AVAILABLE_MODELS } from "../stores/settings";
+import { Component, createSignal, createMemo, Show } from "solid-js";
+import { useSettings, AVAILABLE_MODELS, PROVIDER_PRESETS } from "../stores/settings";
 import { testConnection } from "../lib/tauri-api";
+import ModelSelector from "./ModelSelector";
 import "./Settings.css";
 
 const Settings: Component = () => {
   const { settings, updateSetting, toggleSettings } = useSettings();
   const [testing, setTesting] = createSignal(false);
   const [testResult, setTestResult] = createSignal<string | null>(null);
-  // const [saving, setSaving] = createSignal(false);
 
-  // Group models by provider
-  const groupedModels = createMemo(() => {
-    const groups: Record<string, typeof AVAILABLE_MODELS> = {};
-    AVAILABLE_MODELS.forEach(model => {
-      const provider = model.provider || 'other';
-      if (!groups[provider]) groups[provider] = [];
-      groups[provider].push(model);
-    });
-    return groups;
+
+  // Get current selected model's provider info
+  const currentProviderInfo = createMemo(() => {
+    const model = AVAILABLE_MODELS.find(m => m.id === settings().model);
+    if (model) {
+      return PROVIDER_PRESETS[model.provider];
+    }
+    // If not in preset list, check baseUrl to determine provider
+    const baseUrl = settings().baseUrl;
+    if (baseUrl.includes("localhost:11434") || baseUrl.includes("127.0.0.1:11434")) {
+      return PROVIDER_PRESETS["ollama"];
+    }
+    if (baseUrl.includes("localhost:8080")) {
+      return PROVIDER_PRESETS["localai"];
+    }
+    // Other local services
+    if (baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")) {
+      return PROVIDER_PRESETS["custom"];
+    }
+    return null;
   });
 
-  const providerNames: Record<string, string> = {
-    anthropic: 'Anthropic (Claude)',
-    openai: 'OpenAI (GPT)',
-    google: 'Google (Gemini)',
-    minimax: 'Minimax',
-    other: 'Other'
-  };
+  // Check if it's a local service (no API Key needed)
+  const isLocalProvider = createMemo(() => {
+    const info = currentProviderInfo();
+    if (info?.authType === "none") return true;
+    // Additional check: if baseUrl is a local address, treat as local service
+    const baseUrl = settings().baseUrl;
+    if (baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")) {
+      return true;
+    }
+    return false;
+  });
 
   const handleTest = async () => {
     setTesting(true);
@@ -61,27 +76,57 @@ const Settings: Component = () => {
 
       <div class="settings-content">
         <div class="settings-section">
+          <h3>Model Selection</h3>
+
+          <ModelSelector
+            value={settings().model}
+            onChange={(modelId, baseUrl) => {
+              updateSetting("model", modelId);
+              if (baseUrl) {
+                updateSetting("baseUrl", baseUrl);
+              }
+            }}
+          />
+        </div>
+
+        <div class="settings-section">
           <h3>API Configuration</h3>
 
-          <div class="form-group">
-            <label for="apiKey">API Key</label>
-            <input
-              id="apiKey"
-              type="password"
-              value={settings().apiKey}
-              onInput={(e) => updateSetting("apiKey", e.currentTarget.value)}
-              placeholder="sk-ant-..."
-            />
-            <span class="hint">
-              Get your API key from{" "}
-              <a
-                href="https://console.anthropic.com/settings/keys"
-                target="_blank"
-              >
-                Anthropic Console
-              </a>
-            </span>
-          </div>
+          {/* Local service notice */}
+          <Show when={isLocalProvider()}>
+            <div class="local-service-notice">
+              <span class="notice-icon">🏠</span>
+              <div class="notice-content">
+                <strong>Local Service - No API Key Required</strong>
+                <p>Please ensure {currentProviderInfo()?.name} is running locally</p>
+              </div>
+            </div>
+          </Show>
+
+          {/* API Key input - only show when needed */}
+          <Show when={!isLocalProvider()}>
+            <div class="form-group">
+              <label for="apiKey">API Key</label>
+              <input
+                id="apiKey"
+                type="password"
+                value={settings().apiKey}
+                onInput={(e) => updateSetting("apiKey", e.currentTarget.value)}
+                placeholder={currentProviderInfo()?.authType === "bearer" ? "sk-..." : "your-api-key"}
+              />
+              <span class="hint">
+                <Show
+                  when={currentProviderInfo()?.id === "anthropic"}
+                  fallback={<>Get API Key from {currentProviderInfo()?.name}</>}
+                >
+                  Get your API key from{" "}
+                  <a href="https://console.anthropic.com/settings/keys" target="_blank">
+                    Anthropic Console
+                  </a>
+                </Show>
+              </span>
+            </div>
+          </Show>
 
           <div class="form-group">
             <label for="baseUrl">API Base URL</label>
@@ -90,56 +135,12 @@ const Settings: Component = () => {
               type="text"
               value={settings().baseUrl}
               onInput={(e) => updateSetting("baseUrl", e.currentTarget.value)}
-              placeholder="https://api.anthropic.com"
+              placeholder={currentProviderInfo()?.baseUrl || "https://api.example.com"}
             />
             <span class="hint">
-              Use custom endpoint for proxies or compatible APIs
-            </span>
-          </div>
-
-          <div class="form-group">
-            <button
-              class="test-btn"
-              onClick={handleTest}
-              disabled={testing() || !settings().apiKey}
-            >
-              {testing() ? "Testing..." : "Test Connection"}
-            </button>
-            {testResult() === "success" && (
-              <span class="test-success">Connection successful!</span>
-            )}
-            {testResult() && testResult() !== "success" && (
-              <span class="test-error">{testResult()}</span>
-            )}
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <h3>Model Selection</h3>
-
-          <div class="form-group">
-            <label for="model">Model</label>
-            <select
-              id="model"
-              value={settings().model}
-              onChange={(e) => updateSetting("model", e.currentTarget.value)}
-            >
-              <For each={Object.entries(groupedModels())}>
-                {([provider, models]) => (
-                  <optgroup label={providerNames[provider] || provider}>
-                    <For each={models}>
-                      {(model) => (
-                        <option value={model.id}>
-                          {model.name} - {model.description}
-                        </option>
-                      )}
-                    </For>
-                  </optgroup>
-                )}
-              </For>
-            </select>
-            <span class="hint">
-              Base URL will auto-update when you change models
+              {isLocalProvider()
+                ? "Ensure the address matches your local service configuration"
+                : "Customize proxy or compatible API address"}
             </span>
           </div>
 
@@ -157,6 +158,21 @@ const Settings: Component = () => {
             />
           </div>
 
+          <div class="form-group">
+            <button
+              class="test-btn"
+              onClick={handleTest}
+              disabled={testing() || (!isLocalProvider() && !settings().apiKey)}
+            >
+              {testing() ? "Testing..." : "Test Connection"}
+            </button>
+            {testResult() === "success" && (
+              <span class="test-success">✓ Connection successful!</span>
+            )}
+            {testResult() && testResult() !== "success" && (
+              <span class="test-error">{testResult()}</span>
+            )}
+          </div>
         </div>
 
         <div class="settings-section">

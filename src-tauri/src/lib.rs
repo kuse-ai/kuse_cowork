@@ -2,6 +2,7 @@ mod agent;
 mod claude;
 mod commands;
 mod database;
+mod llm_client;
 mod mcp;
 mod skills;
 mod tools;

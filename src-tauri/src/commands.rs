@@ -54,7 +54,9 @@ pub fn get_platform() -> String {
 // Settings commands
 #[command]
 pub fn get_settings(state: State<'_, Arc<AppState>>) -> Result<Settings, CommandError> {
-    state.db.get_settings().map_err(Into::into)
+    let settings = state.db.get_settings()?;
+    println!("[get_settings] api_key length from db: {}", settings.api_key.len());
+    Ok(settings)
 }
 
 #[command]
@@ -62,6 +64,16 @@ pub async fn save_settings(
     state: State<'_, Arc<AppState>>,
     settings: Settings,
 ) -> Result<(), CommandError> {
+    println!("[save_settings] model: {}", settings.model);
+    println!("[save_settings] base_url: {}", settings.base_url);
+    println!("[save_settings] api_key length: {}", settings.api_key.len());
+    // Show first and last 10 chars for debugging
+    if settings.api_key.len() > 20 {
+        println!("[save_settings] api_key preview: {}...{}",
+            &settings.api_key[..10],
+            &settings.api_key[settings.api_key.len()-10..]);
+    }
+
     state.db.save_settings(&settings)?;
 
     // Update Claude client with new settings
@@ -80,22 +92,70 @@ pub async fn save_settings(
 
 #[command]
 pub async fn test_connection(state: State<'_, Arc<AppState>>) -> Result<String, CommandError> {
+    use crate::llm_client::LLMClient;
+
     let settings = state.db.get_settings()?;
 
-    if settings.api_key.is_empty() {
+    // Debug logging
+    println!("[test_connection] model: {}", settings.model);
+    println!("[test_connection] base_url: {}", settings.base_url);
+    println!("[test_connection] api_key length: {}", settings.api_key.len());
+    println!("[test_connection] provider: {}", settings.get_provider());
+    println!("[test_connection] is_local_provider: {}", settings.is_local_provider());
+
+    if settings.api_key.is_empty() && !settings.is_local_provider() {
         return Ok("No API key configured".to_string());
     }
 
-    let client = ClaudeClient::new(settings.api_key, Some(settings.base_url));
+    // Choose test method based on provider type
+    if settings.is_local_provider() {
+        // Local service - use LLMClient to check connection
+        let llm_client = LLMClient::new(
+            String::new(), // Local services don't need API key
+            Some(settings.base_url.clone()),
+            None,
+            Some(&settings.model),
+        );
 
-    let messages = vec![ClaudeMessage {
-        role: "user".to_string(),
-        content: "Hi".to_string(),
-    }];
+        match llm_client.check_connection().await {
+            Ok(true) => Ok("success".to_string()),
+            Ok(false) => Ok("Error: Cannot connect to local service, please ensure it is running".to_string()),
+            Err(e) => Ok(format!("Error: {}", e)),
+        }
+    } else {
+        // Cloud service - check provider type
+        let provider = settings.get_provider();
 
-    match client.send_message(messages, &settings.model, 10, None).await {
-        Ok(_) => Ok("success".to_string()),
-        Err(e) => Ok(format!("Error: {}", e)),
+        match provider.as_str() {
+            "anthropic" => {
+                // Anthropic - use ClaudeClient
+                let client = ClaudeClient::new(settings.api_key, Some(settings.base_url));
+                let messages = vec![ClaudeMessage {
+                    role: "user".to_string(),
+                    content: "Hi".to_string(),
+                }];
+
+                match client.send_message(messages, &settings.model, 10, None).await {
+                    Ok(_) => Ok("success".to_string()),
+                    Err(e) => Ok(format!("Error: {}", e)),
+                }
+            }
+            _ => {
+                // Other cloud services - use LLMClient
+                let llm_client = LLMClient::new(
+                    settings.api_key.clone(),
+                    Some(settings.base_url.clone()),
+                    None,
+                    Some(&settings.model),
+                );
+
+                match llm_client.check_connection().await {
+                    Ok(true) => Ok("success".to_string()),
+                    Ok(false) => Ok("Error: Cannot connect to service".to_string()),
+                    Err(e) => Ok(format!("Error: {}", e)),
+                }
+            }
+        }
     }
 }
 
@@ -172,7 +232,7 @@ pub async fn send_chat_message(
 ) -> Result<String, CommandError> {
     let settings = state.db.get_settings()?;
 
-    if settings.api_key.is_empty() {
+    if settings.api_key.is_empty() && !settings.is_local_provider() {
         return Err(CommandError {
             message: "API key not configured".to_string(),
         });
@@ -281,7 +341,8 @@ pub async fn run_agent(
 ) -> Result<String, CommandError> {
     let settings = state.db.get_settings()?;
 
-    if settings.api_key.is_empty() {
+    // Check if API Key is needed (local services don't need it)
+    if settings.api_key.is_empty() && !settings.is_local_provider() {
         return Err(CommandError {
             message: "API key not configured".to_string(),
         });
@@ -316,8 +377,11 @@ pub async fn run_agent(
     }
     config.project_path = request.project_path;
 
-    // Create agent loop
-    let agent = AgentLoop::new(
+    // Get provider info
+    let provider_id = settings.get_provider();
+
+    // Create agent loop with provider
+    let agent = AgentLoop::new_with_provider(
         settings.api_key,
         settings.base_url,
         config,
@@ -325,6 +389,7 @@ pub async fn run_agent(
         settings.max_tokens,
         Some(settings.temperature),
         state.mcp_manager.clone(),
+        Some(&provider_id),
     );
 
     // Create channel for events
@@ -372,7 +437,7 @@ pub async fn send_chat_with_tools(
 
     let settings = state.db.get_settings()?;
 
-    if settings.api_key.is_empty() {
+    if settings.api_key.is_empty() && !settings.is_local_provider() {
         return Err(CommandError {
             message: "API key not configured".to_string(),
         });
@@ -723,7 +788,8 @@ pub async fn run_task_agent(
 ) -> Result<String, CommandError> {
     let settings = state.db.get_settings()?;
 
-    if settings.api_key.is_empty() {
+    // Check if API Key is needed (local services don't need it)
+    if settings.api_key.is_empty() && !settings.is_local_provider() {
         return Err(CommandError {
             message: "API key not configured".to_string(),
         });
@@ -766,8 +832,11 @@ pub async fn run_task_agent(
     }
     config.project_path = request.project_path;
 
-    // Create agent loop
-    let agent = AgentLoop::new(
+    // Get provider info
+    let provider_id = settings.get_provider();
+
+    // Create agent loop with provider
+    let agent = AgentLoop::new_with_provider(
         settings.api_key,
         settings.base_url,
         config,
@@ -775,6 +844,7 @@ pub async fn run_task_agent(
         settings.max_tokens,
         Some(settings.temperature),
         state.mcp_manager.clone(),
+        Some(&provider_id),
     );
 
     // Build conversation history from existing messages

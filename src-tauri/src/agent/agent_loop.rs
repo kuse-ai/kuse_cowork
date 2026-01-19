@@ -2,6 +2,7 @@ use crate::agent::{
     AgentConfig, AgentContent, AgentEvent, AgentMessage, ContentBlock, MessageBuilder,
     PlanStepInfo, ToolExecutor, ToolUse,
 };
+use crate::llm_client::{ApiFormat, ProviderConfig};
 use crate::mcp::MCPManager;
 use regex::Regex;
 use reqwest::Client;
@@ -13,14 +14,13 @@ pub struct AgentLoop {
     api_key: String,
     base_url: String,
     config: AgentConfig,
-    #[allow(dead_code)]
     model: String,
-    #[allow(dead_code)]
     max_tokens: u32,
-    #[allow(dead_code)]
     temperature: Option<f32>,
     tool_executor: ToolExecutor,
     message_builder: MessageBuilder,
+    /// Provider configuration for determining API format
+    provider_config: ProviderConfig,
 }
 
 impl AgentLoop {
@@ -33,6 +33,19 @@ impl AgentLoop {
         temperature: Option<f32>,
         mcp_manager: Arc<MCPManager>,
     ) -> Self {
+        Self::new_with_provider(api_key, base_url, config, model, max_tokens, temperature, mcp_manager, None)
+    }
+
+    pub fn new_with_provider(
+        api_key: String,
+        base_url: String,
+        config: AgentConfig,
+        model: String,
+        max_tokens: u32,
+        temperature: Option<f32>,
+        mcp_manager: Arc<MCPManager>,
+        provider_id: Option<&str>,
+    ) -> Self {
         let tool_executor = ToolExecutor::new(config.project_path.clone())
             .with_mcp_manager(mcp_manager.clone());
         let message_builder = MessageBuilder::new(
@@ -42,16 +55,29 @@ impl AgentLoop {
             temperature,
         ).with_mcp_manager(mcp_manager);
 
+        // Infer config from provider_id or model
+        let mut provider_config = if let Some(pid) = provider_id {
+            ProviderConfig::from_preset(pid)
+        } else {
+            ProviderConfig::from_model(&model)
+        };
+
+        // Use custom base_url
+        if !base_url.is_empty() {
+            provider_config.base_url = base_url.clone();
+        }
+
         Self {
             client: Client::new(),
             api_key,
-            base_url,
+            base_url: provider_config.base_url.clone(),
             config,
             model,
             max_tokens,
             temperature,
             tool_executor,
             message_builder,
+            provider_config,
         }
     }
 
@@ -191,12 +217,33 @@ impl AgentLoop {
         request: &crate::agent::message_builder::ClaudeApiRequest,
         event_tx: &mpsc::Sender<AgentEvent>,
     ) -> Result<serde_json::Value, String> {
-        let response = self
-            .client
-            .post(format!("{}/v1/messages", self.base_url))
+        match self.provider_config.api_format {
+            ApiFormat::Anthropic => self.send_anthropic_request(request, event_tx).await,
+            ApiFormat::OpenAI | ApiFormat::OpenAICompatible => {
+                self.send_openai_request(request, event_tx).await
+            }
+            _ => Err(format!("Unsupported API format: {:?}", self.provider_config.api_format)),
+        }
+    }
+
+    /// Send Anthropic format request
+    async fn send_anthropic_request(
+        &self,
+        request: &crate::agent::message_builder::ClaudeApiRequest,
+        event_tx: &mpsc::Sender<AgentEvent>,
+    ) -> Result<serde_json::Value, String> {
+        let url = format!("{}/v1/messages", self.base_url.trim_end_matches('/'));
+
+        let mut req = self.client.post(&url)
             .header("Content-Type", "application/json")
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
+            .header("anthropic-version", "2023-06-01");
+
+        // Add authentication
+        if !self.api_key.is_empty() {
+            req = req.header("x-api-key", &self.api_key);
+        }
+
+        let response = req
             .json(request)
             .send()
             .await
@@ -207,9 +254,264 @@ impl AgentLoop {
             return Err(format!("API error: {}", error_text));
         }
 
-        // Handle streaming response
-
         self.handle_stream_response(response, event_tx).await
+    }
+
+    /// Send OpenAI compatible format request
+    async fn send_openai_request(
+        &self,
+        request: &crate::agent::message_builder::ClaudeApiRequest,
+        event_tx: &mpsc::Sender<AgentEvent>,
+    ) -> Result<serde_json::Value, String> {
+        let base = self.base_url.trim_end_matches('/');
+        let url = if base.ends_with("/v1") {
+            format!("{}/chat/completions", base)
+        } else {
+            format!("{}/v1/chat/completions", base)
+        };
+
+        // Convert request format to OpenAI format
+        let openai_request = self.convert_to_openai_format(request);
+
+        let mut req = self.client.post(&url)
+            .header("Content-Type", "application/json");
+
+        // Add authentication (if needed)
+        if !self.api_key.is_empty() {
+            req = req.header("Authorization", format!("Bearer {}", self.api_key));
+        }
+
+        let response = req
+            .json(&openai_request)
+            .send()
+            .await
+            .map_err(|e| format!("HTTP error: {}", e))?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(format!("API error: {}", error_text));
+        }
+
+        self.handle_openai_stream_response(response, event_tx).await
+    }
+
+    /// Convert Claude request format to OpenAI format
+    fn convert_to_openai_format(
+        &self,
+        request: &crate::agent::message_builder::ClaudeApiRequest,
+    ) -> serde_json::Value {
+        use crate::agent::message_builder::ApiContent;
+
+        // Build messages, including system prompt
+        let mut messages: Vec<serde_json::Value> = Vec::new();
+
+        // Add system message
+        if !request.system.is_empty() {
+            messages.push(serde_json::json!({
+                "role": "system",
+                "content": request.system
+            }));
+        }
+
+        // Convert conversation messages
+        for msg in &request.messages {
+            let role = &msg.role;
+
+            match &msg.content {
+                ApiContent::Text(text) => {
+                    messages.push(serde_json::json!({
+                        "role": role,
+                        "content": text
+                    }));
+                }
+                ApiContent::Blocks(blocks) => {
+                    // Handle content blocks (text, tool_use, tool_result)
+                    let mut text_parts: Vec<String> = Vec::new();
+                    let mut tool_calls: Vec<serde_json::Value> = Vec::new();
+
+                    for block in blocks {
+                        let block_type = block.get("type").and_then(|v| v.as_str()).unwrap_or("");
+
+                        match block_type {
+                            "text" => {
+                                if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
+                                    text_parts.push(text.to_string());
+                                }
+                            }
+                            "tool_use" => {
+                                tool_calls.push(serde_json::json!({
+                                    "id": block.get("id"),
+                                    "type": "function",
+                                    "function": {
+                                        "name": block.get("name"),
+                                        "arguments": serde_json::to_string(block.get("input").unwrap_or(&serde_json::json!({}))).unwrap_or_default()
+                                    }
+                                }));
+                            }
+                            "tool_result" => {
+                                // OpenAI uses tool role to represent tool results
+                                messages.push(serde_json::json!({
+                                    "role": "tool",
+                                    "tool_call_id": block.get("tool_use_id"),
+                                    "content": block.get("content")
+                                }));
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    // If there's text content
+                    if !text_parts.is_empty() {
+                        let mut msg_obj = serde_json::json!({
+                            "role": role,
+                            "content": text_parts.join("\n")
+                        });
+
+                        // If there are tool_calls
+                        if !tool_calls.is_empty() {
+                            msg_obj["tool_calls"] = serde_json::json!(tool_calls);
+                        }
+
+                        messages.push(msg_obj);
+                    } else if !tool_calls.is_empty() {
+                        // Only tool_calls, no text
+                        messages.push(serde_json::json!({
+                            "role": role,
+                            "content": serde_json::Value::Null,
+                            "tool_calls": tool_calls
+                        }));
+                    }
+                }
+            }
+        }
+
+        // Convert tools definition
+        let tools: Vec<serde_json::Value> = request.tools.iter().map(|tool| {
+            serde_json::json!({
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.input_schema
+                }
+            })
+        }).collect();
+
+        let mut openai_request = serde_json::json!({
+            "model": request.model,
+            "max_tokens": request.max_tokens,
+            "temperature": request.temperature.unwrap_or(0.7),
+            "stream": request.stream,
+            "messages": messages
+        });
+
+        if !tools.is_empty() {
+            openai_request["tools"] = serde_json::json!(tools);
+            openai_request["tool_choice"] = serde_json::json!("auto");
+        }
+
+        openai_request
+    }
+
+    /// Handle OpenAI streaming response
+    async fn handle_openai_stream_response(
+        &self,
+        response: reqwest::Response,
+        event_tx: &mpsc::Sender<AgentEvent>,
+    ) -> Result<serde_json::Value, String> {
+        use futures::StreamExt;
+
+        let mut stream = response.bytes_stream();
+        let mut buffer = String::new();
+        let mut accumulated_text = String::new();
+        let mut tool_calls: Vec<serde_json::Value> = Vec::new();
+        let mut current_tool_calls: std::collections::HashMap<i64, (String, String, String)> = std::collections::HashMap::new();
+
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| format!("Stream error: {}", e))?;
+            buffer.push_str(&String::from_utf8_lossy(&chunk));
+
+            while let Some(pos) = buffer.find('\n') {
+                let line = buffer[..pos].to_string();
+                buffer = buffer[pos + 1..].to_string();
+
+                if let Some(data) = line.strip_prefix("data: ") {
+                    if data.trim() == "[DONE]" {
+                        continue;
+                    }
+
+                    if let Ok(event) = serde_json::from_str::<serde_json::Value>(data) {
+                        if let Some(choices) = event.get("choices").and_then(|v| v.as_array()) {
+                            for choice in choices {
+                                if let Some(delta) = choice.get("delta") {
+                                    // Handle text content
+                                    if let Some(content) = delta.get("content").and_then(|v| v.as_str()) {
+                                        accumulated_text.push_str(content);
+                                        let _ = event_tx.send(AgentEvent::Text {
+                                            content: accumulated_text.clone(),
+                                        }).await;
+                                    }
+
+                                    // Handle tool_calls
+                                    if let Some(tcs) = delta.get("tool_calls").and_then(|v| v.as_array()) {
+                                        for tc in tcs {
+                                            let index = tc.get("index").and_then(|v| v.as_i64()).unwrap_or(0);
+
+                                            let entry = current_tool_calls.entry(index).or_insert_with(|| {
+                                                (String::new(), String::new(), String::new())
+                                            });
+
+                                            if let Some(id) = tc.get("id").and_then(|v| v.as_str()) {
+                                                entry.0 = id.to_string();
+                                            }
+                                            if let Some(func) = tc.get("function") {
+                                                if let Some(name) = func.get("name").and_then(|v| v.as_str()) {
+                                                    entry.1 = name.to_string();
+                                                }
+                                                if let Some(args) = func.get("arguments").and_then(|v| v.as_str()) {
+                                                    entry.2.push_str(args);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Check if finished
+                                if choice.get("finish_reason").and_then(|v| v.as_str()).is_some() {
+                                    // When finished, convert collected tool_calls to Claude format
+                                    for (_idx, (id, name, args)) in &current_tool_calls {
+                                        if !id.is_empty() && !name.is_empty() {
+                                            let input: serde_json::Value = serde_json::from_str(args)
+                                                .unwrap_or(serde_json::json!({}));
+                                            tool_calls.push(serde_json::json!({
+                                                "type": "tool_use",
+                                                "id": id,
+                                                "name": name,
+                                                "input": input
+                                            }));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Build Claude format response
+        let mut content = Vec::new();
+        if !accumulated_text.is_empty() {
+            content.push(serde_json::json!({
+                "type": "text",
+                "text": accumulated_text
+            }));
+        }
+        content.extend(tool_calls);
+
+        Ok(serde_json::json!({
+            "content": content
+        }))
     }
 
     async fn handle_stream_response(

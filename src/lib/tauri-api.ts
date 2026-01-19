@@ -8,6 +8,7 @@ export interface Settings {
   model: string;
   base_url: string;
   max_tokens: number;
+  temperature: number;
 }
 
 export interface Conversation {

@@ -21,6 +21,10 @@ pub struct Settings {
     pub base_url: String,
     pub max_tokens: u32,
     pub temperature: f32,
+    /// Provider ID (e.g., "anthropic", "ollama", "openrouter")
+    /// If empty, will be inferred automatically from model
+    #[serde(default)]
+    pub provider: String,
 }
 
 impl Default for Settings {
@@ -31,7 +35,49 @@ impl Default for Settings {
             base_url: "https://api.anthropic.com".to_string(),
             max_tokens: 4096,
             temperature: 0.7,
+            provider: "anthropic".to_string(),
         }
+    }
+}
+
+impl Settings {
+    /// Automatically infer provider from model (if not set)
+    pub fn get_provider(&self) -> String {
+        if !self.provider.is_empty() {
+            return self.provider.clone();
+        }
+
+        // Infer from model name
+        let model_lower = self.model.to_lowercase();
+
+        if model_lower.contains("claude") {
+            "anthropic".to_string()
+        } else if model_lower.contains("gpt") && !model_lower.contains("/") {
+            "openai".to_string()
+        } else if model_lower.contains("gemini") {
+            "google".to_string()
+        } else if model_lower.contains("minimax") {
+            "minimax".to_string()
+        } else if model_lower.starts_with("anthropic/") || model_lower.starts_with("openai/") || model_lower.starts_with("meta-llama/") || model_lower.starts_with("deepseek/") {
+            "openrouter".to_string()
+        } else if model_lower.contains(":") {
+            // Ollama format (e.g., llama3.3:latest)
+            "ollama".to_string()
+        } else {
+            // Default to anthropic
+            "anthropic".to_string()
+        }
+    }
+
+    /// Check if it's a local service (no API Key needed)
+    pub fn is_local_provider(&self) -> bool {
+        // First check if base_url is a local address
+        if self.base_url.contains("localhost") || self.base_url.contains("127.0.0.1") {
+            return true;
+        }
+        // Then check provider type
+        let provider = self.get_provider();
+        matches!(provider.as_str(), "ollama" | "localai" | "vllm" | "tgi" | "sglang")
     }
 }
 
@@ -204,8 +250,14 @@ impl Database {
                 "base_url" => settings.base_url = value,
                 "max_tokens" => settings.max_tokens = value.parse().unwrap_or(4096),
                 "temperature" => settings.temperature = value.parse().unwrap_or(0.7),
+                "provider" => settings.provider = value,
                 _ => {}
             }
+        }
+
+        // If provider is empty, infer from model
+        if settings.provider.is_empty() {
+            settings.provider = settings.get_provider();
         }
 
         Ok(settings)
@@ -214,18 +266,26 @@ impl Database {
     pub fn save_settings(&self, settings: &Settings) -> Result<(), DbError> {
         let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
 
+        // If provider is empty, infer automatically
+        let provider = if settings.provider.is_empty() {
+            settings.get_provider()
+        } else {
+            settings.provider.clone()
+        };
+
         let pairs = [
-            ("api_key", &settings.api_key),
-            ("model", &settings.model),
-            ("base_url", &settings.base_url),
-            ("max_tokens", &settings.max_tokens.to_string()),
-            ("temperature", &settings.temperature.to_string()),
+            ("api_key", settings.api_key.clone()),
+            ("model", settings.model.clone()),
+            ("base_url", settings.base_url.clone()),
+            ("max_tokens", settings.max_tokens.to_string()),
+            ("temperature", settings.temperature.to_string()),
+            ("provider", provider),
         ];
 
         for (key, value) in pairs {
             conn.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
-                [key, value],
+                [key, &value],
             )?;
         }
 
