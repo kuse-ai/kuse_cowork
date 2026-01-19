@@ -196,6 +196,9 @@ export const AVAILABLE_MODELS = [
   { id: "openai/gpt-4o", name: "GPT-4o", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "deepseek/deepseek-r1", name: "DeepSeek R1", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
+  { id: "z-ai/glm-4.7", name: "GLM 4.7", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
+  { id: "moonshotai/kimi-k2-thinking", name: "Kimi K2 Thinking", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
+  { id: "minimax/minimax-m2.1", name: "MiniMax M2.1", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
 
   // ========== Together AI ==========
   { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", name: "Llama 3.3 70B Turbo", description: "via Together", provider: "together", baseUrl: "https://api.together.xyz/v1" },
