@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Kuse Cowork! This guide will help
 
 ### 1. Fork the Repository
 
-1. Go to [github.com/kuse-cowork/kuse_cowork](https://github.com/kuse-cowork/kuse_cowork)
+1. Go to [github.com/kuse-ai/kuse_cowork](https://github.com/kuse-ai/kuse_cowork)
 2. Click "Fork"
 3. Clone your fork:
 
@@ -316,7 +316,7 @@ Contributors are recognized in:
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/kuse-cowork/kuse_cowork/discussions)
+- Open a [Discussion](https://github.com/kuse-ai/kuse_cowork/discussions)
 - Check existing issues
 - Read the documentation
 

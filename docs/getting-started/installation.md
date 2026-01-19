@@ -27,7 +27,7 @@ This guide covers how to install Kuse Cowork on your system.
 
 The easiest way to install Kuse Cowork is to download pre-built binaries from GitHub Releases.
 
-1. Go to [GitHub Releases](https://github.com/kuse-cowork/kuse_cowork/releases)
+1. Go to [GitHub Releases](https://github.com/kuse-ai/kuse_cowork/releases)
 2. Download the appropriate file for your platform:
    - **macOS**: `kuse-cowork_x.x.x_aarch64.dmg` (Apple Silicon) or `kuse-cowork_x.x.x_x64.dmg` (Intel)
    - **Windows**: `kuse-cowork_x.x.x_x64-setup.exe`
@@ -86,7 +86,7 @@ Before building from source, ensure you have:
 
 ```bash
 # Clone the repository
-git clone https://github.com/kuse-cowork/kuse_cowork.git
+git clone https://github.com/kuse-ai/kuse_cowork.git
 cd kuse_cowork
 
 # Install dependencies

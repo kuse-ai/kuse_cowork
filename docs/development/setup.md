@@ -79,7 +79,7 @@ This guide covers setting up a development environment for contributing to Kuse 
 
 ```bash
 # Clone the repository
-git clone https://github.com/kuse-cowork/kuse_cowork.git
+git clone https://github.com/kuse-ai/kuse_cowork.git
 cd kuse_cowork
 
 # Install frontend dependencies

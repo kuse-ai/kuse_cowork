@@ -3,10 +3,12 @@ name: Deploy Docs
 on:
   push:
     branches:
+      - main
       - feat/jiaxi/ollama-support
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
@@ -23,17 +25,8 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-docs.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install dependencies
-        run: |
-          pip install mkdocs-material mkdocs-static-i18n
+        run: pip install mkdocs-material
 
       - name: Build and Deploy
         run: mkdocs gh-deploy --force
