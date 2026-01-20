@@ -8,7 +8,7 @@ const { frontmatter } = useData()
 
 <template>
   <Layout>
-    <template #home-features-after>
+    <template #layout-bottom>
       <div class="made-with-kuse">
         <a href="https://www.kuse.ai/" target="_blank" rel="noopener noreferrer">
           made with kuse
