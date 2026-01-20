@@ -4,7 +4,7 @@ This guide covers all configuration options in Kuse Cowork.
 
 ## Settings Overview
 
-Access settings by clicking the gear icon (⚙️) in the top-right corner of the application.
+Access settings by clicking 'Settings' in the bottom-left corner of the application.
 
 ## AI Provider Configuration
 

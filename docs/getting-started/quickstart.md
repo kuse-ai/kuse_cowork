@@ -39,51 +39,13 @@ After launching Kuse Cowork, you need to configure at least one AI provider.
 
 The simplest way to use Kuse Cowork is through the Chat interface:
 
-1. Click on **Chat** in the sidebar
-2. Type your message and press Enter
-3. The AI will respond with helpful information
+1. Type your message and press Enter
+2. The AI will respond with helpful information
 
 **Try asking:**
 - "What can you help me with?"
 - "Explain how to use Docker"
 - "Write a Python script that prints Hello World"
-
-## Step 3: Create a Task with Agent
-
-For more complex, multi-step tasks, use the Agent feature:
-
-1. Click on **Tasks** in the sidebar
-2. Click **New Task**
-3. Enter a task description:
-
-**Example tasks:**
-- "Create a new React component for a login form"
-- "Find and fix the bug in src/utils.ts"
-- "Add unit tests for the UserService class"
-
-4. Optionally select a **Project Folder** to give the agent access to your codebase
-5. Click **Start**
-
-The agent will:
-
-1. Analyze your request
-2. Create a step-by-step plan
-3. Execute each step, showing progress in real-time
-4. Use tools like file reading, bash commands, and code editing
-
-## Step 4: Enable Tools
-
-For enhanced functionality, enable tools in Chat mode:
-
-1. In the Chat view, toggle **Enable Tools** on
-2. Now the AI can:
-   - Read and search files in your project
-   - Execute commands (in Docker for safety)
-   - Edit files with your approval
-
-::: warning
-Tool-enabled chat requires selecting a project folder first.
-:::
 
 ## Example Workflows
 

@@ -31,57 +31,55 @@ Output locations:
 
 ### Platform-Specific Builds
 
-**macOS:**
+::: code-group
 
-    ```bash
-    # Build for current architecture
-    pnpm tauri build
+```bash [macOS]
+# Build for current architecture
+pnpm tauri build
 
-    # Build for specific architecture
-    pnpm tauri build --target aarch64-apple-darwin  # Apple Silicon
-    pnpm tauri build --target x86_64-apple-darwin   # Intel
+# Build for specific architecture
+pnpm tauri build --target aarch64-apple-darwin  # Apple Silicon
+pnpm tauri build --target x86_64-apple-darwin   # Intel
 
-    # Universal binary (both architectures)
-    pnpm tauri build --target universal-apple-darwin
-    ```
+# Universal binary (both architectures)
+pnpm tauri build --target universal-apple-darwin
 
-    **Output formats:**
-    - `.app` - Application bundle
-    - `.dmg` - Disk image
-    - `.pkg` - Installer package
+# Output formats:
+# .app - Application bundle
+# .dmg - Disk image
+# .pkg - Installer package
+```
 
-**Windows:**
+```bash [Windows]
+# Build for Windows
+pnpm tauri build
 
-    ```bash
-    # Build for Windows
-    pnpm tauri build
+# Build specific format
+pnpm tauri build --bundles msi
+pnpm tauri build --bundles nsis
 
-    # Build specific format
-    pnpm tauri build --bundles msi
-    pnpm tauri build --bundles nsis
-    ```
+# Output formats:
+# .exe - Executable
+# .msi - MSI installer
+# *-setup.exe - NSIS installer
+```
 
-    **Output formats:**
-    - `.exe` - Executable
-    - `.msi` - MSI installer
-    - `*-setup.exe` - NSIS installer
+```bash [Linux]
+# Build for Linux
+pnpm tauri build
 
-**Linux:**
+# Build specific format
+pnpm tauri build --bundles deb
+pnpm tauri build --bundles appimage
+pnpm tauri build --bundles rpm
 
-    ```bash
-    # Build for Linux
-    pnpm tauri build
+# Output formats:
+# .deb - Debian package
+# .rpm - Red Hat package
+# .AppImage - Universal Linux app
+```
 
-    # Build specific format
-    pnpm tauri build --bundles deb
-    pnpm tauri build --bundles appimage
-    pnpm tauri build --bundles rpm
-    ```
-
-    **Output formats:**
-    - `.deb` - Debian package
-    - `.rpm` - Red Hat package
-    - `.AppImage` - Universal Linux app
+:::
 
 ## Build Configuration
 
@@ -306,52 +304,54 @@ codegen-units = 16   # Faster compilation
 
 ### Build fails with missing libraries
 
-    **Linux:**
-    ```bash
-    sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev
-    ```
+**Linux:**
 
-    **macOS:**
-    ```bash
-    xcode-select --install
-    ```
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev
+```
+
+**macOS:**
+
+```bash
+xcode-select --install
+```
 
 ### Code signing fails
 
-    1. Verify certificate is valid
-    2. Check keychain access
-    3. Ensure correct identity name
+1. Verify certificate is valid
+2. Check keychain access
+3. Ensure correct identity name
 
 ### Build is too large
 
-    1. Enable LTO in release profile
-    2. Use `opt-level = "s"` or `"z"`
-    3. Strip debug symbols
+1. Enable LTO in release profile
+2. Use `opt-level = "s"` or `"z"`
+3. Strip debug symbols
 
 ### Cross-compilation fails
 
-    1. Install target: `rustup target add <target>`
-    2. Install cross-compiler toolchain
-    3. Check linker configuration
+1. Install target: `rustup target add <target>`
+2. Install cross-compiler toolchain
+3. Check linker configuration
 
 ## Versioning
 
 Update version in multiple places:
 
 1. `package.json`:
-   ```json
-   { "version": "1.0.0" }
-   ```
+```json
+{ "version": "1.0.0" }
+```
 
 2. `src-tauri/Cargo.toml`:
-   ```toml
-   version = "1.0.0"
-   ```
+```toml
+version = "1.0.0"
+```
 
 3. `src-tauri/tauri.conf.json`:
-   ```json
-   { "version": "1.0.0" }
-   ```
+```json
+{ "version": "1.0.0" }
+```
 
 ## Release Checklist
 

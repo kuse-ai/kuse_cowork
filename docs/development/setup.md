@@ -15,65 +15,68 @@ This guide covers setting up a development environment for contributing to Kuse 
 
 ### Platform-Specific Setup
 
-**macOS:**
+::: code-group
 
-    ```bash
-    # Install Homebrew
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```bash [macOS]
+# Install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-    # Install dependencies
-    brew install node pnpm rust
+# Install dependencies
+brew install node pnpm rust
 
-    # Install Tauri CLI
-    cargo install tauri-cli
+# Install Tauri CLI
+cargo install tauri-cli
 
-    # Install Docker Desktop
-    brew install --cask docker
-    ```
+# Install Docker Desktop
+brew install --cask docker
+```
 
-**Windows:**
+```bash [Linux (Ubuntu/Debian)]
+# Install system dependencies
+sudo apt update
+sudo apt install -y \
+    libwebkit2gtk-4.1-dev \
+    build-essential \
+    curl \
+    wget \
+    libssl-dev \
+    libgtk-3-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev
 
-    1. Install [Node.js](https://nodejs.org/) (LTS version)
-    2. Install pnpm: `npm install -g pnpm`
-    3. Install [Rust](https://rustup.rs/)
-    4. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with C++ workload
-    5. Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
-    6. Install Tauri CLI: `cargo install tauri-cli`
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
 
-**Linux (Ubuntu/Debian):**
+# Install pnpm
+npm install -g pnpm
 
-    ```bash
-    # Install system dependencies
-    sudo apt update
-    sudo apt install -y \
-        libwebkit2gtk-4.1-dev \
-        build-essential \
-        curl \
-        wget \
-        libssl-dev \
-        libgtk-3-dev \
-        libayatana-appindicator3-dev \
-        librsvg2-dev
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
 
-    # Install Node.js
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+# Install Tauri CLI
+cargo install tauri-cli
 
-    # Install pnpm
-    npm install -g pnpm
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+```
 
-    # Install Rust
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    source $HOME/.cargo/env
+```powershell [Windows]
+# 1. Install Node.js from https://nodejs.org/ (LTS version)
+# 2. Install pnpm:
+npm install -g pnpm
 
-    # Install Tauri CLI
-    cargo install tauri-cli
+# 3. Install Rust from https://rustup.rs/
+# 4. Install Visual Studio Build Tools with C++ workload
+# 5. Install Docker Desktop from https://www.docker.com/products/docker-desktop
+# 6. Install Tauri CLI:
+cargo install tauri-cli
+```
 
-    # Install Docker
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker $USER
-    ```
+:::
 
 ## Clone and Setup
 
@@ -117,11 +120,12 @@ pnpm dev
 Access at `http://localhost:1420`
 
 ::: info Web Mode Limitations
-    Without Tauri, some features are unavailable:
-    - Tool execution
-    - Docker integration
-    - MCP connections
-    - Local file access
+Without Tauri, some features are unavailable:
+- Tool execution
+- Docker integration
+- MCP connections
+- Local file access
+:::
 
 ### Backend Only
 
@@ -161,8 +165,7 @@ kuse_cowork/
 ├── package.json
 ├── pnpm-lock.yaml
 ├── tsconfig.json
-├── vite.config.ts
-└── mkdocs.yml
+└── vite.config.ts
 ```
 
 ## IDE Setup
@@ -349,33 +352,33 @@ pub fn ProcessItem(item: Item) -> Output { }
 
 ### Cargo build fails
 
-    ```bash
-    # Clean and rebuild
-    cd src-tauri
-    cargo clean
-    cargo build
-    ```
+```bash
+# Clean and rebuild
+cd src-tauri
+cargo clean
+cargo build
+```
 
 ### pnpm install fails
 
-    ```bash
-    # Clear cache and reinstall
-    rm -rf node_modules
-    pnpm store prune
-    pnpm install
-    ```
+```bash
+# Clear cache and reinstall
+rm -rf node_modules
+pnpm store prune
+pnpm install
+```
 
 ### Tauri dev crashes
 
-    1. Check Rust compilation: `cd src-tauri && cargo check`
-    2. Check Vite: `pnpm dev`
-    3. Check logs for errors
+1. Check Rust compilation: `cd src-tauri && cargo check`
+2. Check Vite: `pnpm dev`
+3. Check logs for errors
 
 ### Docker not working
 
-    1. Ensure Docker Desktop is running
-    2. Check Docker socket: `docker ps`
-    3. On Linux: `sudo chmod 666 /var/run/docker.sock`
+1. Ensure Docker Desktop is running
+2. Check Docker socket: `docker ps`
+3. On Linux: `sudo chmod 666 /var/run/docker.sock`
 
 ## Next Steps
 
