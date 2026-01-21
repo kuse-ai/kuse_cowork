@@ -5,12 +5,66 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      release_upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Kuse Cowork v${{ steps.get_version.outputs.version }}
+          draft: true
+          prerelease: false
+          body: |
+            ## Downloads
+
+            | Platform | File |
+            |----------|------|
+            | macOS (Apple Silicon) | `.dmg` for M1/M2/M3/M4 |
+            | macOS (Intel) | `.dmg` for Intel Macs |
+            | Windows | `.msi` installer |
+            | Linux | `.deb` or `.AppImage` |
+
+            ## Installation
+
+            1. Download the file for your system
+            2. Run the installer
+            3. Launch Kuse Cowork
+            4. Enter your Anthropic API key in Settings
+
+            ### macOS Note
+            If you see "app is damaged" error:
+            ```bash
+            xattr -cr "/Applications/Kuse Cowork.app"
+            ```
+
   build:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -64,30 +118,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'Kuse Cowork v__VERSION__'
-          releaseBody: |
-            ## Downloads
-
-            | Platform | File |
-            |----------|------|
-            | macOS (Apple Silicon) | `.dmg` for M1/M2/M3/M4 |
-            | macOS (Intel) | `.dmg` for Intel Macs |
-            | Windows | `.msi` installer |
-            | Linux | `.deb` or `.AppImage` |
-
-            ## Installation
-
-            1. Download the file for your system
-            2. Run the installer
-            3. Launch Kuse Cowork
-            4. Enter your Anthropic API key in Settings
-
-            ### macOS Note
-            If you see "app is damaged" error:
-            ```bash
-            xattr -cr "/Applications/Kuse Cowork.app"
-            ```
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: --target ${{ matrix.target }}
