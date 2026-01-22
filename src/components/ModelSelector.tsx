@@ -42,6 +42,8 @@ type OllamaStatus = "checking" | "running" | "not-running";
 interface ModelSelectorProps {
   value: string;
   onChange: (modelId: string, baseUrl?: string) => void;
+  baseUrl?: string;  // Current base URL from settings
+  apiKey?: string;   // Current API key from settings
 }
 
 const ModelSelector: Component<ModelSelectorProps> = (props) => {
@@ -66,8 +68,6 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
   const [ollamaBaseUrl, _setOllamaBaseUrl] = createSignal("http://localhost:11434");
 
   // Custom endpoint discovery state
-  const [customBaseUrl, setCustomBaseUrl] = createSignal("http://localhost:8000");
-  const [customApiKey, setCustomApiKey] = createSignal("");
   const [discoveredModels, setDiscoveredModels] = createSignal<string[]>([]);
   const [isDiscovering, setIsDiscovering] = createSignal(false);
   const [discoveryError, setDiscoveryError] = createSignal<string | null>(null);
@@ -144,17 +144,20 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
     props.onChange(modelName, ollamaBaseUrl());
   };
 
-  // Discover models from custom endpoint
+  // Discover models from custom endpoint (uses baseUrl and apiKey from settings)
   const discoverCustomModels = async () => {
-    const url = customBaseUrl();
-    if (!url) return;
+    const url = props.baseUrl;
+    if (!url) {
+      setDiscoveryError("Please configure Base URL in API Configuration below");
+      return;
+    }
 
     setIsDiscovering(true);
     setDiscoveryError(null);
     setDiscoveredModels([]);
 
     try {
-      const models = await discoverModels(url, customApiKey() || undefined);
+      const models = await discoverModels(url, props.apiKey || undefined);
       setDiscoveredModels(models);
       if (models.length === 0) {
         setDiscoveryError("No models found at this endpoint");
@@ -168,7 +171,7 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
 
   // Handle custom model selection
   const handleCustomModelSelect = (modelId: string) => {
-    props.onChange(modelId, customBaseUrl());
+    props.onChange(modelId, props.baseUrl);
   };
 
   // Get current provider info
@@ -320,33 +323,19 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
           </div>
 
           <div class="custom-form">
-            <div class="form-group">
-              <label>Base URL</label>
-              <div class="url-input-row">
-                <input
-                  type="text"
-                  value={customBaseUrl()}
-                  placeholder="e.g., http://localhost:8000"
-                  onInput={(e) => setCustomBaseUrl(e.currentTarget.value)}
-                />
-                <button
-                  class="discover-btn"
-                  onClick={discoverCustomModels}
-                  disabled={isDiscovering() || !customBaseUrl()}
-                >
-                  {isDiscovering() ? "..." : "Discover"}
-                </button>
+            {/* Discovery section - uses Base URL and API Key from settings */}
+            <div class="discovery-section">
+              <div class="discovery-info">
+                <span class="info-label">Endpoint:</span>
+                <span class="info-value">{props.baseUrl || "Not configured"}</span>
               </div>
-            </div>
-
-            <div class="form-group">
-              <label>API Key (optional)</label>
-              <input
-                type="password"
-                value={customApiKey()}
-                placeholder="Leave empty if not required"
-                onInput={(e) => setCustomApiKey(e.currentTarget.value)}
-              />
+              <button
+                class="discover-btn"
+                onClick={discoverCustomModels}
+                disabled={isDiscovering() || !props.baseUrl}
+              >
+                {isDiscovering() ? "Discovering..." : "Discover Models"}
+              </button>
             </div>
 
             {/* Discovery Error */}
