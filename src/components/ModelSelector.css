@@ -345,6 +345,103 @@
   margin: 0;
 }
 
+/* URL Input Row */
+.url-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.url-input-row input {
+  flex: 1;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+}
+
+.url-input-row input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(106, 64, 64, 0.1);
+}
+
+/* Discover Button */
+.discover-btn {
+  padding: 0.625rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.discover-btn:hover:not(:disabled) {
+  background: var(--primary-hover, var(--primary));
+  opacity: 0.9;
+}
+
+.discover-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Discovery Error */
+.discovery-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  color: var(--foreground);
+}
+
+.discovery-error .error-icon {
+  font-size: 1rem;
+}
+
+/* Discovered Models */
+.discovered-models {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.discovered-models > label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.discovered-models .model-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.discovered-models .model-item {
+  padding: 0.5rem 0.75rem;
+}
+
+.discovered-models .model-item .model-name {
+  font-size: 0.8125rem;
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+}
+
+/* Manual Input Section */
+.manual-input {
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  margin-top: 0.5rem;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .provider-tabs {
