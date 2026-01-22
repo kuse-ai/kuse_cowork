@@ -15,7 +15,7 @@ export default withMermaid(
       logo: '/logo.svg',
 
       nav: [
-        { text: 'Home', link: '/' },
+        { text: 'Home', link: 'https://open-cowork.io' },
         { text: 'Guide', link: '/getting-started/installation' },
         { text: 'Features', link: '/features/overview' },
         { text: 'Architecture', link: '/architecture/overview' }
