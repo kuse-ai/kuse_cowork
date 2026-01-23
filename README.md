@@ -253,4 +253,9 @@ Inspired by:
 ---
 **For bugs, feature requests, or roadmap discussions, please open a GitHub Issue.**
 
+---
+## Documentation & Guides
+- Open cowork Hub: [https://www.open-cowork.io](https://www.open-cowork.io)
+
+
 
