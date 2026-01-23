@@ -237,7 +237,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ### Data & Analysis
 1. Statistical Analysis
   - Outlier detection, cross-tabulation, time-series insights. -> See [Results](https://www.kuse.ai/pages/SaaS-Executive-Dashboard/BcFGhbtWFzmCx54EVwCeCn?_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
-2, Data Visualization
+2. Data Visualization
   - Generate presentation-ready charts and dashboards. -> See [Results](https://www.kuse.ai/pages/NVIDIA-Financial-Performance-Dashboard/N7977gdYrESSLeKNGYKi2C?_gl=1*afop29*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
 3. Data Transformation
   - Clean and restructure messy datasets into standardized formats. -> See [Results](https://www.kuse.ai/pages/Marketing-Campaign-Dashboard-Kuse-AI/47mS8HoUL6cQidSQWb2FXh?_gl=1*afop29*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
