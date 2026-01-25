@@ -15,7 +15,7 @@ interface ToolExecution {
 }
 
 const App: Component = () => {
-  const { showSettings, toggleSettings, isLoading } = useSettings();
+  const { showSettings, toggleSettings, isLoading, loadError } = useSettings();
 
   // UI state
   const [showSkills, setShowSkills] = createSignal(false);
@@ -270,7 +270,7 @@ const App: Component = () => {
 
   return (
     <div class="app agent-layout">
-      <Show when={!isLoading()} fallback={<LoadingScreen />}>
+      <Show when={!isLoading() && !loadError()} fallback={<LoadingScreen error={loadError()} />}>
         <TaskSidebar
           tasks={tasks()}
           activeTaskId={activeTask()?.id || null}
@@ -314,11 +314,21 @@ const App: Component = () => {
   );
 };
 
-const LoadingScreen: Component = () => (
+const LoadingScreen: Component<{ error?: string | null }> = (props) => (
   <div class="loading-screen">
     <div class="loading-content">
       <h1>Kuse Cowork</h1>
-      <p>Loading...</p>
+      <Show when={props.error} fallback={<p>Loading...</p>}>
+        <p class="error-message" style={{ color: "#ef4444" }}>
+          Failed to load settings: {props.error}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ "margin-top": "1rem", padding: "0.5rem 1rem", cursor: "pointer" }}
+        >
+          Retry
+        </button>
+      </Show>
     </div>
   </div>
 );

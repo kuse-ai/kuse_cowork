@@ -84,11 +84,9 @@ const Settings: Component = () => {
 
           <ModelSelector
             value={settings().model}
-            onChange={(modelId, baseUrl) => {
+            onChange={(modelId) => {
+              // baseUrl is auto-updated in settings store when model changes
               updateSetting("model", modelId);
-              if (baseUrl) {
-                updateSetting("baseUrl", baseUrl);
-              }
             }}
           />
         </div>

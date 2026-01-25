@@ -288,15 +288,19 @@ function toApiSettings(settings: Settings): ApiSettings {
 const [settings, setSettings] = createSignal<Settings>(DEFAULT_SETTINGS);
 const [showSettings, setShowSettings] = createSignal(false);
 const [isLoading, setIsLoading] = createSignal(true);
+const [loadError, setLoadError] = createSignal<string | null>(null);
 
 // Load settings on startup
 export async function loadSettings() {
   setIsLoading(true);
+  setLoadError(null);
   try {
     const apiSettings = await getSettingsApi();
     setSettings(fromApiSettings(apiSettings));
   } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Failed to load settings";
     console.error("Failed to load settings:", e);
+    setLoadError(errorMsg);
   } finally {
     setIsLoading(false);
   }
@@ -335,6 +339,7 @@ export function useSettings() {
     setSettings,
     showSettings,
     isLoading,
+    loadError,
     toggleSettings: () => setShowSettings((v) => !v),
     updateSetting: async <K extends keyof Settings>(key: K, value: Settings[K]) => {
       let newSettings = { ...settings(), [key]: value };

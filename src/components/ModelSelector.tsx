@@ -40,7 +40,7 @@ type OllamaStatus = "checking" | "running" | "not-running";
 
 interface ModelSelectorProps {
   value: string;
-  onChange: (modelId: string, baseUrl?: string) => void;
+  onChange: (modelId: string) => void;
 }
 
 const ModelSelector: Component<ModelSelectorProps> = (props) => {
@@ -124,16 +124,13 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
     return ollamaModels().find(m => m.name === props.value);
   });
 
-  // Handle model selection
+  // Handle model selection (baseUrl is auto-updated in settings store)
   const handleCloudModelChange = (modelId: string) => {
-    const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-    if (model) {
-      props.onChange(modelId, model.baseUrl);
-    }
+    props.onChange(modelId);
   };
 
   const handleOllamaModelSelect = (modelName: string) => {
-    props.onChange(modelName, ollamaBaseUrl());
+    props.onChange(modelName);
   };
 
   // Get current provider info
