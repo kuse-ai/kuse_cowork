@@ -387,14 +387,9 @@ export function useSettings() {
       setSettings(newSettings);
       await persistSettings(newSettings);
     },
-    // Check if current provider is configured (has API key or doesn't need one)
-    isConfigured: () => {
-      const provider = getProviderFromModel(settings().model);
-      if (!providerRequiresApiKey(provider)) {
-        return true;  // Local providers like Ollama don't need API key
-      }
-      return settings().apiKey.length > 0;
-    },
+    // Always show main UI - API key validation happens at request time
+    // This allows users to explore the app and switch to local providers without being blocked
+    isConfigured: () => true,
     loadSettings,
     getModelInfo,
     getDefaultBaseUrl,
