@@ -47,7 +47,8 @@ Full support for Model Context Protocol (MCP) for seamless tool integration.
 ---
 ## 📰 News & Updates
 
--- **\[2026-01-26\]** Release of v0.0.2: Fixing issue where start task actively need user to set an cloud-based api key. 
+- **\[2026-01-26\]** Release of v0.0.2: Fixing issue where "start task" button actively need user to set a cloud-based api key.
+- 
 ---
 
 ## 🚀 Features
