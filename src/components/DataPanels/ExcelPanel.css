@@ -1,0 +1,160 @@
+.excel-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.excel-panel-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.excel-panel-empty h3 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: 1.125rem;
+  color: var(--foreground);
+  margin: 0 0 0.5rem;
+}
+
+.excel-panel-empty p {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin: 0 0 1.5rem;
+}
+
+.open-file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.open-file-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.recent-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.recent-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.recent-file-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--primary);
+  background: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.recent-file-btn:hover {
+  background: var(--card);
+  border-color: var(--primary);
+}
+
+.excel-panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  margin: 0 0.75rem;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  color: #dc3545;
+}
+
+.error-icon {
+  font-size: 1rem;
+}
+
+.error-message {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-changed-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin: 0 0.75rem 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  color: #3b82f6;
+}
+
+.changed-icon {
+  font-size: 0.875rem;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.refresh-btn {
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #3b82f6;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.refresh-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}

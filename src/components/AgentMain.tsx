@@ -1,6 +1,7 @@
 import { Component, Show, For, createSignal } from "solid-js";
 import { Task, TaskMessage, openMultipleFoldersDialog } from "../lib/tauri-api";
 import { useSettings } from "../stores/settings";
+import { hasExcelContext, generateExcelContext } from "../stores/dataPanels";
 import "./AgentMain.css";
 
 interface AgentMainProps {
@@ -39,20 +40,29 @@ const AgentMain: Component<AgentMainProps> = (props) => {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    const message = input().trim();
-    if (!message || props.isRunning) return;
+    const userMessage = input().trim();
+    if (!userMessage || props.isRunning) return;
 
     // Join all selected paths with comma for Docker mounting
     const projectPath = selectedPaths().length > 0 ? selectedPaths().join(",") : undefined;
 
+    // Inject Excel context if available
+    let messageToSend = userMessage;
+    if (hasExcelContext()) {
+      const excelContext = generateExcelContext();
+      if (excelContext) {
+        messageToSend = `${excelContext}\n---\n\n${userMessage}`;
+      }
+    }
+
     if (isInConversation()) {
       // Continue existing conversation
-      props.onContinueTask(message, projectPath);
+      props.onContinueTask(messageToSend, projectPath);
     } else {
       // Create new task
-      const firstLine = message.split("\n")[0];
+      const firstLine = userMessage.split("\n")[0];
       const title = firstLine.length > 50 ? firstLine.slice(0, 50) + "..." : firstLine;
-      props.onNewTask(title, message, projectPath);
+      props.onNewTask(title, messageToSend, projectPath);
     }
     setInput("");
   };

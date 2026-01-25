@@ -7,6 +7,8 @@ import SkillsList from "./components/SkillsList";
 import MCPSettings from "./components/MCPSettings";
 import TaskSidebar from "./components/TaskSidebar";
 import TaskPanel from "./components/TaskPanel";
+import DataPanelsDock from "./components/DataPanels/DataPanelsDock";
+import { showDataPanels, setShowDataPanels, loadPanelState } from "./stores/dataPanels";
 
 interface ToolExecution {
   id: number;
@@ -32,6 +34,7 @@ const App: Component = () => {
   onMount(async () => {
     await loadSettings();
     await refreshTasks();
+    await loadPanelState();
   });
 
   const toggleSkills = () => {
@@ -65,6 +68,10 @@ const App: Component = () => {
       setShowMCP(false);
     }
     toggleSettings();
+  };
+
+  const toggleDataPanels = () => {
+    setShowDataPanels(!showDataPanels());
   };
 
   const refreshTasks = async () => {
@@ -279,6 +286,8 @@ const App: Component = () => {
           onSettingsClick={handleToggleSettings}
           onSkillsClick={toggleSkills}
           onMCPClick={toggleMCP}
+          onDataClick={toggleDataPanels}
+          showDataPanels={showDataPanels()}
         />
         <main class="main-content">
           <Show when={showSettings()}>
@@ -303,11 +312,18 @@ const App: Component = () => {
           </Show>
         </main>
         <aside class="task-panel-container">
-          <TaskPanel
-            task={activeTask()}
-            isRunning={isRunning()}
-            toolExecutions={toolExecutions()}
-          />
+          <Show
+            when={showDataPanels()}
+            fallback={
+              <TaskPanel
+                task={activeTask()}
+                isRunning={isRunning()}
+                toolExecutions={toolExecutions()}
+              />
+            }
+          >
+            <DataPanelsDock />
+          </Show>
         </aside>
       </Show>
     </div>

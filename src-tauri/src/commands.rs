@@ -1,6 +1,10 @@
 use crate::agent::{AgentConfig, AgentContent, AgentEvent, AgentLoop, AgentMessage};
 use crate::claude::{ClaudeClient, Message as ClaudeMessage};
-use crate::database::{Conversation, Database, Message, PlanStep, Settings, Task, TaskMessage};
+use crate::database::{Conversation, DataPanel, Database, Message, PlanStep, Settings, Task, TaskMessage};
+use crate::excel::{
+    self, ApplyResult, CellEdit, ExcelError, ExcelReadOptions, ExcelReadResult,
+    ExcelSchema, ExcelWatcher, FileChangeEvent, ValidationResult, create_event_channel,
+};
 use crate::mcp::{MCPManager, MCPServerConfig, MCPServerStatus, MCPToolCall, MCPToolResult};
 use crate::skills::{SkillMetadata, get_available_skills};
 use serde::{Deserialize, Serialize};
@@ -12,6 +16,7 @@ pub struct AppState {
     pub db: Arc<Database>,
     pub claude_client: Mutex<Option<ClaudeClient>>,
     pub mcp_manager: Arc<MCPManager>,
+    pub excel_watcher: Mutex<Option<ExcelWatcher>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -29,6 +34,14 @@ impl From<crate::database::DbError> for CommandError {
 
 impl From<crate::claude::ClaudeError> for CommandError {
     fn from(e: crate::claude::ClaudeError) -> Self {
+        CommandError {
+            message: e.to_string(),
+        }
+    }
+}
+
+impl From<ExcelError> for CommandError {
+    fn from(e: ExcelError) -> Self {
         CommandError {
             message: e.to_string(),
         }
@@ -1642,4 +1655,224 @@ fn convert_to_google_format(
     }
 
     google_request
+}
+
+// ==================== Excel Commands ====================
+
+/// Read an Excel file with pagination support
+#[command]
+pub async fn excel_read(
+    _state: State<'_, Arc<AppState>>,
+    path: String,
+    sheet: Option<String>,
+    range: Option<String>,
+    offset: Option<u32>,
+    max_rows: Option<u32>,
+) -> Result<ExcelReadResult, CommandError> {
+    let options = ExcelReadOptions {
+        path,
+        sheet,
+        range,
+        offset,
+        max_rows,
+    };
+
+    let result = tokio::task::spawn_blocking(move || {
+        excel::read_excel(&options)
+    })
+    .await
+    .map_err(|e| CommandError { message: format!("Task join error: {}", e) })??;
+
+    Ok(result)
+}
+
+/// Validate Excel data against a schema
+#[command]
+pub async fn excel_validate(
+    _state: State<'_, Arc<AppState>>,
+    path: String,
+    sheet: Option<String>,
+    range: Option<String>,
+    schema: ExcelSchema,
+    offset: Option<u32>,
+    max_rows: Option<u32>,
+) -> Result<ValidationResult, CommandError> {
+    // First read the data
+    let read_options = ExcelReadOptions {
+        path,
+        sheet,
+        range,
+        offset,
+        max_rows,
+    };
+
+    let read_result = tokio::task::spawn_blocking(move || {
+        excel::read_excel(&read_options)
+    })
+    .await
+    .map_err(|e| CommandError { message: format!("Task join error: {}", e) })??;
+
+    // Then validate
+    let offset_val = read_result.offset;
+    let columns = read_result.columns;
+    let rows = read_result.rows;
+
+    let validation_result = excel::validate_schema(&rows, &columns, &schema, offset_val);
+
+    Ok(validation_result)
+}
+
+/// Apply edits to an Excel file
+#[command]
+pub async fn excel_apply(
+    window: Window,
+    state: State<'_, Arc<AppState>>,
+    path: String,
+    sheet: String,
+    edits: Vec<CellEdit>,
+    validate_checksum: Option<String>,
+) -> Result<ApplyResult, CommandError> {
+    let path_clone = path.clone();
+    let sheet_clone = sheet.clone();
+    let checksum = validate_checksum.clone();
+
+    let result = tokio::task::spawn_blocking(move || {
+        excel::apply_edits(&path_clone, &sheet_clone, &edits, checksum.as_deref())
+    })
+    .await
+    .map_err(|e| CommandError { message: format!("Task join error: {}", e) })??;
+
+    // Emit event for UI update
+    let _ = window.emit("excel-edits-applied", &serde_json::json!({
+        "path": path,
+        "sheet": sheet,
+        "edits_applied": result.edits_applied,
+        "new_checksum": result.new_checksum,
+    }));
+
+    Ok(result)
+}
+
+/// Start or stop watching an Excel file for changes
+#[command]
+pub async fn excel_watch(
+    window: Window,
+    state: State<'_, Arc<AppState>>,
+    path: String,
+    enable: bool,
+) -> Result<(), CommandError> {
+    let mut watcher_guard = state.excel_watcher.lock().await;
+
+    if enable {
+        // Create watcher if it doesn't exist
+        if watcher_guard.is_none() {
+            let (tx, rx) = create_event_channel();
+            *watcher_guard = Some(ExcelWatcher::new(tx));
+
+            // Spawn a task to forward events to the frontend
+            let window_clone = window.clone();
+            tokio::spawn(async move {
+                while let Ok(event) = rx.recv() {
+                    let _ = window_clone.emit("excel-file-changed", &event);
+                }
+            });
+        }
+
+        if let Some(ref watcher) = *watcher_guard {
+            watcher.watch_file(&path)?;
+        }
+    } else {
+        if let Some(ref watcher) = *watcher_guard {
+            watcher.unwatch_file(&path)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Get the list of sheets in an Excel file
+#[command]
+pub async fn excel_get_sheets(
+    _state: State<'_, Arc<AppState>>,
+    path: String,
+) -> Result<Vec<excel::SheetInfo>, CommandError> {
+    let result = tokio::task::spawn_blocking(move || {
+        excel::get_sheets(&path)
+    })
+    .await
+    .map_err(|e| CommandError { message: format!("Task join error: {}", e) })??;
+
+    Ok(result)
+}
+
+/// Compute checksum of an Excel file
+#[command]
+pub async fn excel_checksum(
+    _state: State<'_, Arc<AppState>>,
+    path: String,
+) -> Result<String, CommandError> {
+    let result = tokio::task::spawn_blocking(move || {
+        excel::compute_checksum(&path)
+    })
+    .await
+    .map_err(|e| CommandError { message: format!("Task join error: {}", e) })??;
+
+    Ok(result)
+}
+
+/// Create a backup of an Excel file
+#[command]
+pub async fn excel_backup(
+    _state: State<'_, Arc<AppState>>,
+    path: String,
+) -> Result<String, CommandError> {
+    let result = tokio::task::spawn_blocking(move || {
+        excel::create_backup(&path)
+    })
+    .await
+    .map_err(|e| CommandError { message: format!("Task join error: {}", e) })??;
+
+    Ok(result)
+}
+
+// ==================== Data Panel Commands ====================
+
+/// Get a data panel by provider (singleton pattern)
+#[command]
+pub async fn get_data_panel(
+    state: State<'_, Arc<AppState>>,
+    provider: String,
+) -> Result<Option<DataPanel>, CommandError> {
+    let panel = state.db.get_data_panel_by_provider(&provider)?;
+    Ok(panel)
+}
+
+/// Save a data panel (upsert - create or update)
+#[command]
+pub async fn save_data_panel(
+    state: State<'_, Arc<AppState>>,
+    provider: String,
+    config: String,
+) -> Result<DataPanel, CommandError> {
+    let panel = state.db.upsert_data_panel(&provider, &config)?;
+    Ok(panel)
+}
+
+/// Delete a data panel
+#[command]
+pub async fn delete_data_panel(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), CommandError> {
+    state.db.delete_data_panel(&id)?;
+    Ok(())
+}
+
+/// List all data panels
+#[command]
+pub async fn list_data_panels(
+    state: State<'_, Arc<AppState>>,
+) -> Result<Vec<DataPanel>, CommandError> {
+    let panels = state.db.list_data_panels()?;
+    Ok(panels)
 }

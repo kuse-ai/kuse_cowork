@@ -1,5 +1,6 @@
 pub mod bash;
 pub mod docker;
+pub mod excel;
 pub mod file_edit;
 pub mod file_read;
 pub mod file_write;
@@ -23,6 +24,9 @@ pub fn get_all_tools() -> Vec<ToolDefinition> {
 
     // Add Docker tools
     tools.extend(docker::get_docker_tools());
+
+    // Add Excel query tools
+    tools.extend(excel::get_excel_tools());
 
     tools
 }

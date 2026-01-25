@@ -114,6 +114,10 @@ impl Default for AgentConfig {
                 "docker_run".to_string(),
                 "docker_list".to_string(),
                 "docker_images".to_string(),
+                // Excel query tools
+                "excel_filter".to_string(),
+                "excel_search".to_string(),
+                "excel_aggregate".to_string(),
             ],
         }
     }

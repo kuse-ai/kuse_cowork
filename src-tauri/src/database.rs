@@ -153,6 +153,15 @@ pub struct TaskMessage {
     pub timestamp: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataPanel {
+    pub id: String,
+    pub provider: String, // "excel", "sheets", "csv", etc.
+    pub config: String,   // JSON config
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
 pub struct Database {
     pub(crate) conn: Mutex<Connection>,
 }
@@ -252,6 +261,24 @@ impl Database {
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_task_messages_task
              ON task_messages(task_id)",
+            [],
+        )?;
+
+        // Data panels table for Excel/Sheets/CSV provider state persistence
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS data_panels (
+                id TEXT PRIMARY KEY,
+                provider TEXT NOT NULL,
+                config TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_data_panels_provider
+             ON data_panels(provider)",
             [],
         )?;
 
@@ -691,5 +718,130 @@ impl Database {
         )?;
 
         Ok(())
+    }
+
+    // Data Panel methods
+    pub fn create_data_panel(&self, id: &str, provider: &str, config: &str) -> Result<DataPanel, DbError> {
+        let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        conn.execute(
+            "INSERT INTO data_panels (id, provider, config, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![id, provider, config, now, now],
+        )?;
+
+        Ok(DataPanel {
+            id: id.to_string(),
+            provider: provider.to_string(),
+            config: config.to_string(),
+            created_at: now,
+            updated_at: now,
+        })
+    }
+
+    pub fn get_data_panel(&self, id: &str) -> Result<Option<DataPanel>, DbError> {
+        let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
+
+        let mut stmt = conn.prepare(
+            "SELECT id, provider, config, created_at, updated_at FROM data_panels WHERE id = ?1"
+        )?;
+
+        let mut rows = stmt.query([id])?;
+
+        if let Some(row) = rows.next()? {
+            Ok(Some(DataPanel {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                config: row.get(2)?,
+                created_at: row.get(3)?,
+                updated_at: row.get(4)?,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_data_panel_by_provider(&self, provider: &str) -> Result<Option<DataPanel>, DbError> {
+        let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
+
+        let mut stmt = conn.prepare(
+            "SELECT id, provider, config, created_at, updated_at FROM data_panels WHERE provider = ?1 LIMIT 1"
+        )?;
+
+        let mut rows = stmt.query([provider])?;
+
+        if let Some(row) = rows.next()? {
+            Ok(Some(DataPanel {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                config: row.get(2)?,
+                created_at: row.get(3)?,
+                updated_at: row.get(4)?,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn update_data_panel(&self, id: &str, config: &str) -> Result<(), DbError> {
+        let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        conn.execute(
+            "UPDATE data_panels SET config = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![config, now, id],
+        )?;
+
+        Ok(())
+    }
+
+    pub fn upsert_data_panel(&self, provider: &str, config: &str) -> Result<DataPanel, DbError> {
+        // Check if panel exists for this provider
+        if let Some(existing) = self.get_data_panel_by_provider(provider)? {
+            self.update_data_panel(&existing.id, config)?;
+            // Return updated panel
+            self.get_data_panel(&existing.id)?.ok_or_else(|| {
+                DbError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Panel not found after update",
+                ))
+            })
+        } else {
+            // Create new panel with UUID
+            let id = uuid::Uuid::new_v4().to_string();
+            self.create_data_panel(&id, provider, config)
+        }
+    }
+
+    pub fn delete_data_panel(&self, id: &str) -> Result<(), DbError> {
+        let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
+        conn.execute("DELETE FROM data_panels WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
+    pub fn list_data_panels(&self) -> Result<Vec<DataPanel>, DbError> {
+        let conn = self.conn.lock().map_err(|_| DbError::Lock)?;
+
+        let mut stmt = conn.prepare(
+            "SELECT id, provider, config, created_at, updated_at FROM data_panels ORDER BY updated_at DESC"
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok(DataPanel {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                config: row.get(2)?,
+                created_at: row.get(3)?,
+                updated_at: row.get(4)?,
+            })
+        })?;
+
+        let mut panels = Vec::new();
+        for row in rows {
+            panels.push(row?);
+        }
+
+        Ok(panels)
     }
 }

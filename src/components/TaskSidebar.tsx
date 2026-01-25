@@ -10,6 +10,8 @@ interface TaskSidebarProps {
   onSettingsClick: () => void;
   onSkillsClick: () => void;
   onMCPClick: () => void;
+  onDataClick: () => void;
+  showDataPanels: boolean;
 }
 
 const TaskSidebar: Component<TaskSidebarProps> = (props) => {
@@ -91,6 +93,13 @@ const TaskSidebar: Component<TaskSidebarProps> = (props) => {
       </div>
 
       <div class="sidebar-footer">
+        <button
+          class={`footer-btn primary-btn ${props.showDataPanels ? "active" : ""}`}
+          onClick={props.onDataClick}
+          title="Data Panels"
+        >
+          Data
+        </button>
         <button
           class="footer-btn primary-btn"
           onClick={props.onSkillsClick}

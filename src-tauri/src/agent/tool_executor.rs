@@ -3,6 +3,24 @@ use crate::mcp::{MCPManager, MCPToolCall};
 use crate::tools;
 use std::sync::Arc;
 
+/// Execute an Excel query tool
+fn execute_excel_tool(input: &serde_json::Value, tool_type: &str) -> Result<String, String> {
+    // Get required file_path from input
+    let file_path = input
+        .get("file_path")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing 'file_path' parameter. The Excel file path must be provided.")?;
+
+    let sheet = input.get("sheet").and_then(|v| v.as_str());
+
+    match tool_type {
+        "filter" => tools::excel::execute_filter(input, file_path, sheet),
+        "search" => tools::excel::execute_search(input, file_path, sheet),
+        "aggregate" => tools::excel::execute_aggregate(input, file_path, sheet),
+        _ => Err(format!("Unknown Excel tool type: {}", tool_type)),
+    }
+}
+
 pub struct ToolExecutor {
     project_path: Option<String>,
     mcp_manager: Option<Arc<MCPManager>>,
@@ -87,6 +105,9 @@ impl ToolExecutor {
             "glob" => tools::glob::execute(&tool_use.input, project_path),
             "grep" => tools::grep::execute(&tool_use.input, project_path),
             "list_dir" => tools::list_dir::execute(&tool_use.input, project_path),
+            "excel_filter" => execute_excel_tool(&tool_use.input, "filter"),
+            "excel_search" => execute_excel_tool(&tool_use.input, "search"),
+            "excel_aggregate" => execute_excel_tool(&tool_use.input, "aggregate"),
             _ => Err(format!("Unknown tool: {}", tool_use.name)),
         };
 

@@ -2,6 +2,7 @@ mod agent;
 mod claude;
 mod commands;
 mod database;
+mod excel;
 mod llm_client;
 mod mcp;
 mod skills;
@@ -31,6 +32,7 @@ pub fn run() {
         db: db_arc,
         claude_client: Mutex::new(None),
         mcp_manager,
+        excel_watcher: Mutex::new(None),
     });
 
     tauri::Builder::default()
@@ -65,6 +67,19 @@ pub fn run() {
             commands::disconnect_mcp_server,
             commands::get_mcp_server_statuses,
             commands::execute_mcp_tool,
+            // Excel commands
+            commands::excel_read,
+            commands::excel_validate,
+            commands::excel_apply,
+            commands::excel_watch,
+            commands::excel_get_sheets,
+            commands::excel_checksum,
+            commands::excel_backup,
+            // Data panel commands
+            commands::get_data_panel,
+            commands::save_data_panel,
+            commands::delete_data_panel,
+            commands::list_data_panels,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]
