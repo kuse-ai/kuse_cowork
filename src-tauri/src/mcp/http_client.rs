@@ -51,7 +51,7 @@ impl HttpMcpClient {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
                 "clientInfo": {
-                    "name": "kuse-cowork",
+                    "name": "kuse_cowork",
                     "title": "Kuse Cowork Desktop",
                     "version": "0.1.0"
                 }
