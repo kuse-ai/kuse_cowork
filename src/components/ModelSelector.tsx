@@ -1,5 +1,6 @@
 import { Component, For, Show, createSignal, createMemo, onMount } from "solid-js";
 import { AVAILABLE_MODELS, PROVIDER_PRESETS, ProviderConfig } from "../stores/settings";
+import { discoverModels } from "../lib/tauri-api";
 import "./ModelSelector.css";
 
 // Ollama model info interface
@@ -41,6 +42,8 @@ type OllamaStatus = "checking" | "running" | "not-running";
 interface ModelSelectorProps {
   value: string;
   onChange: (modelId: string, baseUrl?: string) => void;
+  baseUrl?: string;  // Current base URL from settings
+  apiKey?: string;   // Current API key from settings
 }
 
 const ModelSelector: Component<ModelSelectorProps> = (props) => {
@@ -63,6 +66,11 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
   const [ollamaStatus, setOllamaStatus] = createSignal<OllamaStatus>("checking");
   const [ollamaModels, setOllamaModels] = createSignal<OllamaModel[]>([]);
   const [ollamaBaseUrl, _setOllamaBaseUrl] = createSignal("http://localhost:11434");
+
+  // Custom endpoint discovery state
+  const [discoveredModels, setDiscoveredModels] = createSignal<string[]>([]);
+  const [isDiscovering, setIsDiscovering] = createSignal(false);
+  const [discoveryError, setDiscoveryError] = createSignal<string | null>(null);
 
   // Cloud provider categories
   const cloudProviderCategories = {
@@ -134,6 +142,36 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
 
   const handleOllamaModelSelect = (modelName: string) => {
     props.onChange(modelName, ollamaBaseUrl());
+  };
+
+  // Discover models from custom endpoint (uses baseUrl and apiKey from settings)
+  const discoverCustomModels = async () => {
+    const url = props.baseUrl;
+    if (!url) {
+      setDiscoveryError("Please configure Base URL in API Configuration below");
+      return;
+    }
+
+    setIsDiscovering(true);
+    setDiscoveryError(null);
+    setDiscoveredModels([]);
+
+    try {
+      const models = await discoverModels(url, props.apiKey || undefined);
+      setDiscoveredModels(models);
+      if (models.length === 0) {
+        setDiscoveryError("No models found at this endpoint");
+      }
+    } catch (e) {
+      setDiscoveryError(e instanceof Error ? e.message : "Failed to discover models");
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  // Handle custom model selection
+  const handleCustomModelSelect = (modelId: string) => {
+    props.onChange(modelId, props.baseUrl);
   };
 
   // Get current provider info
@@ -281,20 +319,64 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
         <div class="custom-section">
           <div class="custom-notice">
             <span class="notice-icon">🔧</span>
-            <p>Use OpenAI-compatible API service (vLLM / TGI / SGLang, etc.)</p>
+            <p>Use OpenAI-compatible API service (vLLM / TGI / SGLang / LiteLLM, etc.)</p>
           </div>
 
           <div class="custom-form">
-            <div class="form-group">
-              <label>Model ID</label>
+            {/* Discovery section - uses Base URL and API Key from settings */}
+            <div class="discovery-section">
+              <div class="discovery-info">
+                <span class="info-label">Endpoint:</span>
+                <span class="info-value">{props.baseUrl || "Not configured"}</span>
+              </div>
+              <button
+                class="discover-btn"
+                onClick={discoverCustomModels}
+                disabled={isDiscovering() || !props.baseUrl}
+              >
+                {isDiscovering() ? "Discovering..." : "Discover Models"}
+              </button>
+            </div>
+
+            {/* Discovery Error */}
+            <Show when={discoveryError()}>
+              <div class="discovery-error">
+                <span class="error-icon">⚠️</span>
+                <span>{discoveryError()}</span>
+              </div>
+            </Show>
+
+            {/* Discovered Models List */}
+            <Show when={discoveredModels().length > 0}>
+              <div class="discovered-models">
+                <label>Available Models ({discoveredModels().length})</label>
+                <div class="model-list">
+                  <For each={discoveredModels()}>
+                    {(modelId) => (
+                      <div
+                        class={`model-item ${props.value === modelId ? "selected" : ""}`}
+                        onClick={() => handleCustomModelSelect(modelId)}
+                      >
+                        <div class="model-main">
+                          <span class="model-name">{modelId}</span>
+                        </div>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
+
+            {/* Manual model input as fallback */}
+            <div class="form-group manual-input">
+              <label>Or enter Model ID manually</label>
               <input
                 type="text"
                 value={props.value === "custom-model" ? "" : props.value}
                 placeholder="e.g., meta-llama/Llama-3.2-8B"
-                onInput={(e) => props.onChange(e.currentTarget.value || "custom-model")}
+                onInput={(e) => handleCustomModelSelect(e.currentTarget.value || "custom-model")}
               />
             </div>
-            <p class="hint">Configure API URL and key in Settings</p>
           </div>
         </div>
       </Show>

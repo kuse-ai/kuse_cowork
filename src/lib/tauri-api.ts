@@ -512,3 +512,50 @@ export async function getSkillsList(): Promise<SkillMetadata[]> {
   }
   return invoke<SkillMetadata[]>("get_skills_list");
 }
+
+// Model Discovery API
+export async function discoverModels(
+  baseUrl: string,
+  apiKey?: string
+): Promise<string[]> {
+  if (!isTauri()) {
+    // Web fallback using fetch to OpenAI-compatible /v1/models endpoint
+    try {
+      const url = baseUrl.replace(/\/$/, "");
+      const modelsUrl = url.endsWith("/v1") ? `${url}/models` : `${url}/v1/models`;
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (apiKey) {
+        headers["Authorization"] = `Bearer ${apiKey}`;
+      }
+
+      const response = await fetch(modelsUrl, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data)) {
+          return data.data.map((m: { id: string }) => m.id);
+        }
+      }
+
+      // Try Ollama endpoint as fallback
+      const ollamaUrl = `${url.replace("/v1", "")}/api/tags`;
+      const ollamaResponse = await fetch(ollamaUrl);
+      if (ollamaResponse.ok) {
+        const ollamaData = await ollamaResponse.json();
+        if (ollamaData.models && Array.isArray(ollamaData.models)) {
+          return ollamaData.models.map((m: { name: string }) => m.name);
+        }
+      }
+
+      return [];
+    } catch {
+      return [];
+    }
+  }
+  return invoke<string[]>("discover_models", {
+    baseUrl,
+    apiKey,
+  });
+}

@@ -84,6 +84,8 @@ const Settings: Component = () => {
 
           <ModelSelector
             value={settings().model}
+            baseUrl={settings().baseUrl}
+            apiKey={settings().apiKey}
             onChange={(modelId, baseUrl) => {
               updateSetting("model", modelId);
               if (baseUrl) {

@@ -905,7 +905,13 @@ impl LLMClient {
             format!("{}/v1/models", base)
         };
 
-        if let Ok(resp) = self.client.get(&models_url).send().await {
+        // Build request with Authorization header if API key is provided
+        let mut request = self.client.get(&models_url);
+        if !self.api_key.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", self.api_key));
+        }
+
+        if let Ok(resp) = request.send().await {
             if resp.status().is_success() {
                 if let Ok(data) = resp.json::<serde_json::Value>().await {
                     if let Some(models) = data["data"].as_array() {
@@ -918,7 +924,7 @@ impl LLMClient {
             }
         }
 
-        // Try Ollama endpoint
+        // Try Ollama endpoint (no auth needed for local Ollama)
         let ollama_url = format!("{}/api/tags", base.replace("/v1", ""));
         if let Ok(resp) = self.client.get(&ollama_url).send().await {
             if resp.status().is_success() {
