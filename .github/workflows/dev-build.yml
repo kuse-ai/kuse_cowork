@@ -1,0 +1,158 @@
+name: Dev Build
+
+# Development builds for testing experimental branches
+# Artifacts are uploaded (not releases) and expire after 14 days
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'main'
+        type: string
+      platforms:
+        description: 'Platforms to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - macos-only
+          - windows-only
+          - linux-only
+
+jobs:
+  # First job: determine which platforms to build
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set build matrix
+        id: set-matrix
+        run: |
+          if [ "${{ github.event.inputs.platforms }}" = "all" ]; then
+            echo 'matrix={"include":[{"platform":"macos-latest","target":"aarch64-apple-darwin","name":"macOS-ARM64"},{"platform":"macos-latest","target":"x86_64-apple-darwin","name":"macOS-x64"},{"platform":"windows-latest","target":"x86_64-pc-windows-msvc","name":"Windows-x64"},{"platform":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","name":"Linux-x64"}]}' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.platforms }}" = "macos-only" ]; then
+            echo 'matrix={"include":[{"platform":"macos-latest","target":"aarch64-apple-darwin","name":"macOS-ARM64"},{"platform":"macos-latest","target":"x86_64-apple-darwin","name":"macOS-x64"}]}' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.platforms }}" = "windows-only" ]; then
+            echo 'matrix={"include":[{"platform":"windows-latest","target":"x86_64-pc-windows-msvc","name":"Windows-x64"}]}' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.platforms }}" = "linux-only" ]; then
+            echo 'matrix={"include":[{"platform":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","name":"Linux-x64"}]}' >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          prefix-key: dev-${{ github.event.inputs.branch }}
+
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --target ${{ matrix.target }}
+
+      - name: Get artifact paths (macOS)
+        if: matrix.platform == 'macos-latest'
+        id: artifacts_macos
+        run: |
+          DMG=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" | head -1)
+          echo "dmg=$DMG" >> $GITHUB_OUTPUT
+
+      - name: Get artifact paths (Windows)
+        if: matrix.platform == 'windows-latest'
+        id: artifacts_windows
+        shell: pwsh
+        run: |
+          $MSI = Get-ChildItem -Path "src-tauri\target\${{ matrix.target }}\release\bundle\msi\*.msi" | Select-Object -First 1
+          echo "msi=$($MSI.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Get artifact paths (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        id: artifacts_linux
+        run: |
+          DEB=$(find src-tauri/target/${{ matrix.target }}/release/bundle/deb -name "*.deb" | head -1)
+          APPIMAGE=$(find src-tauri/target/${{ matrix.target }}/release/bundle/appimage -name "*.AppImage" | head -1)
+          echo "deb=$DEB" >> $GITHUB_OUTPUT
+          echo "appimage=$APPIMAGE" >> $GITHUB_OUTPUT
+
+      - name: Upload macOS artifact
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuse-cowork-${{ github.event.inputs.branch }}-${{ matrix.name }}
+          path: ${{ steps.artifacts_macos.outputs.dmg }}
+          retention-days: 14
+
+      - name: Upload Windows artifact
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuse-cowork-${{ github.event.inputs.branch }}-${{ matrix.name }}
+          path: ${{ steps.artifacts_windows.outputs.msi }}
+          retention-days: 14
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuse-cowork-${{ github.event.inputs.branch }}-${{ matrix.name }}
+          path: |
+            ${{ steps.artifacts_linux.outputs.deb }}
+            ${{ steps.artifacts_linux.outputs.appimage }}
+          retention-days: 14
+
+  summary:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Build Summary
+        run: |
+          echo "## Dev Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.event.inputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** ${{ github.event.inputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "Artifacts are available in the workflow run and will expire in **14 days**." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download from: [Actions Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

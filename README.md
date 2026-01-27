@@ -1,8 +1,27 @@
-# Open-source Alternative for Claude Code Desktop App
+
+
+<div align="center">
+  <img src="public/kuse-logo.png" alt="Kuse Cowork Logo" width="200"/>
+</div>
+
+
+<br>
+
+<div align="center">
+
+[![DISCORD](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/Pp5aZjMMAC)
+
+</div>
+
+
+# Kuse Cowork：An Open-Source, Model-Agnostic [Alternative to Claude Cowork](https://www.claude-cowork.ai/)
+>Kuse Cowork is a lightweight, open-source desktop cowork agent built for people who want local-first execution, full model freedom, and real privacy control.
 
 **Works with any models, BYOK, written in Rust** 🚀
 
 [*Demo video: Kuse Cowork in action*](https://github.com/user-attachments/assets/e128e657-c1be-4134-828d-01a9a94ef055)
+
+It is an open-source desktop cowork agent created by [Kuse](https://www.kuse.ai/), an AI document generator & Presentation Maker from your knowledge base. Transform docs, PDFs, YouTube, and images into formatted docs, infographics, mind maps, and flashcards—instantly. Stunning, professional, and ready to use.
 
 ## ✨ Why Kuse Cowork?
 
@@ -26,6 +45,17 @@ Default skills are: docx, pdf, pptx, xlsx.
 Full support for Model Context Protocol (MCP) for seamless tool integration.
 
 ---
+## 📰 News & Updates
+
+### Standard release
+- **\[2026-01-26\]** Release of v0.0.2: Fixing issue where "start task" button actively needs the user to set a cloud-based api key.
+
+### Experimental 
+-  **\[2026-01-26\]** Kuse_cowork now supports basic operations on Excel with an integrated UI.
+  <img width="1196" height="805" alt="20260126-103738" src="https://github.com/user-attachments/assets/0fdc6470-7508-41c1-95ba-85bee67d25b5" />
+  
+---
+
 
 ## 🚀 Features
 
@@ -188,6 +218,42 @@ MIT License - see [LICENSE](LICENSE) for details.
 - Docker Desktop required for full isolation features
 - Manual setup process for development environment
 
+## 🚄 Use Cases
+
+### File and Document Management
+
+1. Receipt Processing → Expense Reports
+  - Drop receipts into a folder and ask Kuse to generate a formatted expense report. -> See [Results](https://hosting.kuse.ai/pages/HxcKeoc9qzgz53GukJWT5a.html?_gl=1*1fkzfdd*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+2. Contract & Document Consolidation
+  - Merge multiple drafts, addendums, and feedback notes into one clean final version. -> See [Results](https://www.kuse.ai/pages/EcoGrow-Final-Launch-Execution-Plan-Official-Document/jKXXcarFu4N4AYN8FeTmVr?_gl=1*1od9b1t*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+3. Instant Metadata Tagging
+  - Automatically extract metadata from large batches of documents. -> See [Results](https://www.kuse.ai/pages/Document-Metadata-Extraction-Dashboard/GUuVJMvHckCRecTJNGKpnV?_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+
+### Research & Analysis
+1. Research Synthesis
+  - Combine articles, papers, notes, and web sources into coherent reports. -> See [Results](https://hosting.kuse.ai/pages/f88yBecR8fn8Lw4KP9zgXV.html?board_id=cx8cDS7TJ4gQGYbRYz8SqC&creator_anon_id=98040&_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+2. Transcript Analysis
+  - Extract themes, action items, and key insights from transcripts. -> See [Results](https://hosting.kuse.ai/pages/bddVPFxzAeNDwL6dTqDxPt.html?board_id=GAf3KaQEHK9PNki5ekh7Te&creator_anon_id=98040&_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+3. Personal Knowledge Synthesis
+  - Analyze journals, notes, and research files to uncover hidden patterns. -> See [Results](https://www.kuse.ai/pages/Cross-File-Pattern-Analysis:-Cognitive-Work,-Information-Management-&-Digital-Wellbeing/dahfAT9KiKQ9zAWewnTcmu?_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+
+### Document & Presentation Creation
+1. Spreadsheets with Formulas
+  - Generate real Excel files — not broken CSVs. -> See [Results](https://www.kuse.ai/pages/SaaS-Executive-Dashboard/BcFGhbtWFzmCx54EVwCeCn?_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+2. Presentations from Notes
+  - Create slide decks from transcripts or rough outlines. -> See [Results](https://hosting.kuse.ai/pages/hQ8n9qjD6eHASAa5HsbNpV.html?board_id=TGnuJaWVPWQ8yVtUz49eBx&creator_anon_id=98040&_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+3. Reports from Messy Inputs
+  - Turn voice memos and scattered notes into polished documents. -> See [Results](https://www.kuse.ai/pages/Cross-File-Pattern-Analysis:-Cognitive-Work,-Information-Management-&-Digital-Wellbeing/dahfAT9KiKQ9zAWewnTcmu?_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+
+### Data & Analysis
+1. Statistical Analysis
+  - Outlier detection, cross-tabulation, time-series insights. -> See [Results](https://www.kuse.ai/pages/SaaS-Executive-Dashboard/BcFGhbtWFzmCx54EVwCeCn?_gl=1*pf14ll*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+2. Data Visualization
+  - Generate presentation-ready charts and dashboards. -> See [Results](https://www.kuse.ai/pages/NVIDIA-Financial-Performance-Dashboard/N7977gdYrESSLeKNGYKi2C?_gl=1*afop29*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+3. Data Transformation
+  - Clean and restructure messy datasets into standardized formats. -> See [Results](https://www.kuse.ai/pages/Marketing-Campaign-Dashboard-Kuse-AI/47mS8HoUL6cQidSQWb2FXh?_gl=1*afop29*_ga*OTc1MzA3ODIuMTc2ODc5NjY3MA..*_ga_3806BK9P0R*czE3Njg5ODY3OTAkbzEyJGcxJHQxNzY4OTg4NjczJGo2MCRsMCRoODMzNTI5Mzk0)
+
+
 ## 🙏 Credits
 
 Inspired by:
@@ -195,7 +261,12 @@ Inspired by:
 
 ---
 **⭐ Star this repo if you find it useful!**
+---
+**For bugs, feature requests, or roadmap discussions, please open a GitHub Issue.**
 
-<div align="center">
-  <img src="public/kuse-logo.png" alt="Kuse Cowork Logo" width="200"/>
-</div>
+---
+## Documentation & Guides
+- Open cowork Hub: [https://www.open-cowork.io](https://www.open-cowork.io)
+
+
+
