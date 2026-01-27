@@ -8,8 +8,12 @@ import SkillsList from "./components/SkillsList";
 import MCPSettings from "./components/MCPSettings";
 import TaskSidebar from "./components/TaskSidebar";
 import TaskPanel from "./components/TaskPanel";
+import TracePanel from "./components/TracePanel";
+import BrowserPanel from "./components/BrowserPanel";
 import DataPanelsDock from "./components/DataPanels/DataPanelsDock";
+import ResizablePanels from "./components/ResizablePanels";
 import { showDataPanels, setShowDataPanels, loadPanelState } from "./stores/dataPanels";
+import { useTraces } from "./stores/traces";
 
 interface ToolExecution {
   id: number;
@@ -23,6 +27,11 @@ const App: Component = () => {
   // UI state
   const [showSkills, setShowSkills] = createSignal(false);
   const [showMCP, setShowMCP] = createSignal(false);
+  const [showTracePanel, setShowTracePanel] = createSignal(false);
+  const [showBrowserPanel, setShowBrowserPanel] = createSignal(false);
+
+  // Trace hooks
+  const { logTrace } = useTraces();
 
   // Task state
   const [tasks, setTasks] = createSignal<Task[]>([]);
@@ -76,6 +85,25 @@ const App: Component = () => {
 
   const toggleDataPanels = () => {
     setShowDataPanels(!showDataPanels());
+    if (!showDataPanels()) {
+      setShowTracePanel(false);
+    }
+  };
+
+  const toggleTracePanel = () => {
+    setShowTracePanel(!showTracePanel());
+    if (!showTracePanel()) {
+      setShowDataPanels(false);
+      setShowBrowserPanel(false);
+    }
+  };
+
+  const toggleBrowserPanel = () => {
+    setShowBrowserPanel(!showBrowserPanel());
+    if (!showBrowserPanel()) {
+      setShowDataPanels(false);
+      setShowTracePanel(false);
+    }
   };
 
   const refreshTasks = async () => {
@@ -178,6 +206,15 @@ const App: Component = () => {
           ...prev,
           { id: Date.now(), tool: event.tool, status: "running" },
         ]);
+        // Log trace for tool start
+        if (activeTask()) {
+          logTrace({
+            task_id: activeTask()?.id,
+            doc_id: activeTask()?.id || "default",
+            event_type: "tool_start",
+            payload: { tool: event.tool, input: event.input },
+          });
+        }
         break;
       case "tool_end":
         setToolExecutions((prev) => {
@@ -188,6 +225,15 @@ const App: Component = () => {
           }
           return updated;
         });
+        // Log trace for tool end
+        if (activeTask()) {
+          logTrace({
+            task_id: activeTask()?.id,
+            doc_id: activeTask()?.id || "default",
+            event_type: "tool_end",
+            payload: { tool: event.tool, success: event.success, result: event.result?.slice(0, 200) },
+          });
+        }
         break;
       case "done":
         setActiveTask((prev) => {
@@ -306,47 +352,80 @@ const App: Component = () => {
           onSkillsClick={toggleSkills}
           onMCPClick={toggleMCP}
           onDataClick={toggleDataPanels}
+          onTraceClick={toggleTracePanel}
+          onBrowserClick={toggleBrowserPanel}
           showDataPanels={showDataPanels()}
+          showTracePanel={showTracePanel()}
+          showBrowserPanel={showBrowserPanel()}
         />
-        <main class="main-content">
-          <Show when={showSettings()}>
-            <Settings />
-          </Show>
-          <Show when={showSkills()}>
-            <SkillsList />
-          </Show>
-          <Show when={showMCP()}>
-            <MCPSettings onClose={() => setShowMCP(false)} />
-          </Show>
-          <Show when={!showSettings() && !showSkills() && !showMCP()}>
-            <AgentMain
-              onNewTask={handleNewTask}
-              onContinueTask={handleContinueTask}
-              onNewConversation={handleNewConversation}
-              currentText={currentText()}
-              isRunning={isRunning()}
-              activeTask={activeTask()}
-              messages={taskMessages()}
-              activeApps={activeApps()}
-              onCloseApp={handleCloseApp}
-              onToolWithUI={handleToolWithUI}
-            />
-          </Show>
-        </main>
-        <aside class="task-panel-container">
-          <Show
-            when={showDataPanels()}
-            fallback={
-              <TaskPanel
-                task={activeTask()}
-                isRunning={isRunning()}
-                toolExecutions={toolExecutions()}
-              />
-            }
-          >
-            <DataPanelsDock />
-          </Show>
-        </aside>
+        <ResizablePanels
+          defaultRightWidth={350}
+          minRightWidth={250}
+          maxRightWidth={700}
+          left={
+            <main class="main-content">
+              <Show when={showSettings()}>
+                <Settings />
+              </Show>
+              <Show when={showSkills()}>
+                <SkillsList />
+              </Show>
+              <Show when={showMCP()}>
+                <MCPSettings onClose={() => setShowMCP(false)} />
+              </Show>
+              <Show when={!showSettings() && !showSkills() && !showMCP()}>
+                <AgentMain
+                  onNewTask={handleNewTask}
+                  onContinueTask={handleContinueTask}
+                  onNewConversation={handleNewConversation}
+                  currentText={currentText()}
+                  isRunning={isRunning()}
+                  activeTask={activeTask()}
+                  messages={taskMessages()}
+                  activeApps={activeApps()}
+                  onCloseApp={handleCloseApp}
+                  onToolWithUI={handleToolWithUI}
+                />
+              </Show>
+            </main>
+          }
+          right={
+            <aside class="task-panel-container">
+              <Show
+                when={showBrowserPanel()}
+                fallback={
+                  <Show
+                    when={showTracePanel()}
+                    fallback={
+                      <Show
+                        when={showDataPanels()}
+                        fallback={
+                          <TaskPanel
+                            task={activeTask()}
+                            isRunning={isRunning()}
+                            toolExecutions={toolExecutions()}
+                          />
+                        }
+                      >
+                        <DataPanelsDock />
+                      </Show>
+                    }
+                  >
+                    <TracePanel
+                      docId={activeTask()?.id || null}
+                      onClose={() => setShowTracePanel(false)}
+                    />
+                  </Show>
+                }
+              >
+                <BrowserPanel
+                  docId={activeTask()?.id || null}
+                  onClose={() => setShowBrowserPanel(false)}
+                />
+              </Show>
+            </aside>
+          }
+        />
       </Show>
     </div>
   );

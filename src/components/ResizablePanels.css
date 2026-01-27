@@ -1,0 +1,49 @@
+.resizable-panels {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.resizable-panels-left {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.resizable-panels-divider {
+  width: 6px;
+  background: var(--muted);
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-base);
+  flex-shrink: 0;
+}
+
+.resizable-panels-divider:hover,
+.resizable-panels-divider.dragging {
+  background: var(--primary);
+}
+
+.divider-handle {
+  width: 2px;
+  height: 40px;
+  background: var(--border);
+  border-radius: 1px;
+  transition: background var(--transition-base);
+}
+
+.resizable-panels-divider:hover .divider-handle,
+.resizable-panels-divider.dragging .divider-handle {
+  background: var(--primary-foreground);
+}
+
+.resizable-panels-right {
+  height: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+}

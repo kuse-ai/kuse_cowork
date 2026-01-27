@@ -11,7 +11,11 @@ interface TaskSidebarProps {
   onSkillsClick: () => void;
   onMCPClick: () => void;
   onDataClick: () => void;
+  onTraceClick: () => void;
+  onBrowserClick: () => void;
   showDataPanels: boolean;
+  showTracePanel: boolean;
+  showBrowserPanel: boolean;
 }
 
 const TaskSidebar: Component<TaskSidebarProps> = (props) => {
@@ -93,6 +97,20 @@ const TaskSidebar: Component<TaskSidebarProps> = (props) => {
       </div>
 
       <div class="sidebar-footer">
+        <button
+          class={`footer-btn primary-btn ${props.showTracePanel ? "active" : ""}`}
+          onClick={props.onTraceClick}
+          title="Activity Trace"
+        >
+          Trace
+        </button>
+        <button
+          class={`footer-btn primary-btn ${props.showBrowserPanel ? "active" : ""}`}
+          onClick={props.onBrowserClick}
+          title="Embedded Browser"
+        >
+          Browse
+        </button>
         <button
           class={`footer-btn primary-btn ${props.showDataPanels ? "active" : ""}`}
           onClick={props.onDataClick}

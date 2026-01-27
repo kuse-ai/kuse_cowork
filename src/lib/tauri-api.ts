@@ -97,6 +97,43 @@ export interface SkillMetadata {
   description: string;
 }
 
+// Trace types
+export interface Trace {
+  id: string;
+  task_id: string | null;
+  doc_id: string;
+  event_type: string; // "edit", "search", "browse", "approval", "tool_start", "tool_end"
+  section_path: string | null;
+  delta: number | null;
+  payload: Record<string, unknown>;
+  created_at: number;
+}
+
+export interface TraceInput {
+  task_id?: string;
+  doc_id: string;
+  event_type: string;
+  section_path?: string;
+  delta?: number;
+  payload?: Record<string, unknown>;
+}
+
+export interface TraceSettings {
+  doc_id: string | null;
+  tracing_enabled: boolean;
+  include_snippets: boolean;
+}
+
+export interface Suggestion {
+  id: string;
+  suggestion_type: string;
+  title: string;
+  description: string;
+  payload: Record<string, unknown>;
+  status: string; // "pending", "approved", "rejected"
+  created_at: number;
+}
+
 // Enhanced chat with tools
 export interface EnhancedChatRequest {
   conversation_id: string;
@@ -583,4 +620,216 @@ export async function executeMCPTool(
       parameters,
     },
   });
+}
+
+// ==================== Trace API ====================
+
+/**
+ * Log a new trace event
+ */
+export async function logTrace(input: TraceInput): Promise<Trace> {
+  if (!isTauri()) {
+    // Web fallback - store in localStorage
+    const trace: Trace = {
+      id: crypto.randomUUID(),
+      task_id: input.task_id || null,
+      doc_id: input.doc_id,
+      event_type: input.event_type,
+      section_path: input.section_path || null,
+      delta: input.delta || null,
+      payload: input.payload || {},
+      created_at: Date.now(),
+    };
+    const traces = JSON.parse(localStorage.getItem(`traces-${input.doc_id}`) || "[]");
+    traces.unshift(trace);
+    localStorage.setItem(`traces-${input.doc_id}`, JSON.stringify(traces.slice(0, 1000)));
+    return trace;
+  }
+  return invoke<Trace>("log_trace", { input });
+}
+
+/**
+ * List traces for a document
+ */
+export async function listTraces(
+  docId: string,
+  limit?: number,
+  beforeTimestamp?: number
+): Promise<Trace[]> {
+  if (!isTauri()) {
+    const traces: Trace[] = JSON.parse(localStorage.getItem(`traces-${docId}`) || "[]");
+    let filtered = traces;
+    if (beforeTimestamp) {
+      filtered = traces.filter((t) => t.created_at < beforeTimestamp);
+    }
+    return filtered.slice(0, limit || 100);
+  }
+  return invoke<Trace[]>("list_traces", { docId, limit, beforeTimestamp });
+}
+
+/**
+ * Delete a specific trace
+ */
+export async function deleteTrace(id: string): Promise<void> {
+  if (!isTauri()) {
+    // Would need doc_id to properly delete from localStorage
+    return;
+  }
+  return invoke("delete_trace", { id });
+}
+
+/**
+ * Clear all traces for a document
+ */
+export async function clearTraces(docId: string): Promise<number> {
+  if (!isTauri()) {
+    localStorage.removeItem(`traces-${docId}`);
+    return 0;
+  }
+  return invoke<number>("clear_traces", { docId });
+}
+
+/**
+ * Get trace settings for a document
+ */
+export async function getTraceSettings(docId: string): Promise<TraceSettings> {
+  if (!isTauri()) {
+    const stored = localStorage.getItem(`trace-settings-${docId}`);
+    if (stored) return JSON.parse(stored);
+    return {
+      doc_id: docId,
+      tracing_enabled: true,
+      include_snippets: true,
+    };
+  }
+  return invoke<TraceSettings>("get_trace_settings", { docId });
+}
+
+/**
+ * Save trace settings for a document
+ */
+export async function saveTraceSettings(docId: string, settings: TraceSettings): Promise<void> {
+  if (!isTauri()) {
+    localStorage.setItem(`trace-settings-${docId}`, JSON.stringify(settings));
+    return;
+  }
+  return invoke("save_trace_settings", { docId, settings });
+}
+
+// ==================== Suggestion API ====================
+
+/**
+ * List suggestions for a document
+ */
+export async function listSuggestions(docId: string, status?: string): Promise<Suggestion[]> {
+  if (!isTauri()) {
+    return [];
+  }
+  return invoke<Suggestion[]>("list_suggestions", { docId, status });
+}
+
+/**
+ * Update suggestion status (approve/reject)
+ */
+export async function updateSuggestionStatus(id: string, status: string): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+  return invoke("update_suggestion_status", { id, status });
+}
+
+/**
+ * Delete a suggestion
+ */
+export async function deleteSuggestion(id: string): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+  return invoke("delete_suggestion", { id });
+}
+
+/**
+ * Generate AI suggestions based on recent trace history
+ */
+export async function generateSuggestions(docId: string): Promise<Suggestion[]> {
+  if (!isTauri()) {
+    return [];
+  }
+  return invoke<Suggestion[]>("generate_suggestions", { docId });
+}
+
+/**
+ * Apply an approved suggestion
+ */
+export async function applySuggestion(suggestionId: string): Promise<{
+  applied: boolean;
+  suggestion_type: string;
+  payload: Record<string, unknown>;
+}> {
+  if (!isTauri()) {
+    throw new Error("Suggestions require the desktop app");
+  }
+  return invoke("apply_suggestion", { suggestionId });
+}
+
+/**
+ * Open a URL in a new native webview window (bypasses X-Frame-Options)
+ */
+export async function openBrowserWindow(url: string, title?: string): Promise<void> {
+  if (!isTauri()) {
+    window.open(url, "_blank");
+    return;
+  }
+  return invoke("open_browser_window", { url, title });
+}
+
+/**
+ * Create an embedded browser webview in the main window
+ */
+export async function createEmbeddedBrowser(
+  url: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): Promise<string> {
+  if (!isTauri()) {
+    throw new Error("Embedded browser requires the desktop app");
+  }
+  return invoke<string>("create_embedded_browser", { url, x, y, width, height });
+}
+
+/**
+ * Update the embedded browser position and size
+ */
+export async function updateEmbeddedBrowserBounds(
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+  return invoke("update_embedded_browser_bounds", { x, y, width, height });
+}
+
+/**
+ * Navigate the embedded browser to a URL
+ */
+export async function navigateEmbeddedBrowser(url: string): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+  return invoke("navigate_embedded_browser", { url });
+}
+
+/**
+ * Close the embedded browser
+ */
+export async function closeEmbeddedBrowser(): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+  return invoke("close_embedded_browser");
 }

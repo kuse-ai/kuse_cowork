@@ -1,0 +1,181 @@
+.suggestion-card-standalone {
+  background: var(--bg-tertiary, #222);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.suggestion-card-standalone:hover {
+  border-color: var(--accent-color, #4a9eff);
+}
+
+.suggestion-card-standalone.approved {
+  border-left: 3px solid #4ade80;
+}
+
+.suggestion-card-standalone.rejected {
+  border-left: 3px solid #f87171;
+  opacity: 0.7;
+}
+
+.suggestion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-quaternary, #282828);
+  border-bottom: 1px solid var(--border-color, #333);
+}
+
+.suggestion-type-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.suggestion-type-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-color, #4a9eff);
+  color: white;
+  border-radius: 4px;
+}
+
+.suggestion-type-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.suggestion-status-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.suggestion-status-badge.approved {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.suggestion-status-badge.rejected {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.suggestion-body {
+  padding: 12px;
+}
+
+.suggestion-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  line-height: 1.4;
+}
+
+.suggestion-description {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  line-height: 1.5;
+}
+
+.suggestion-preview {
+  margin-top: 12px;
+}
+
+.suggestion-preview details {
+  background: var(--bg-secondary, #1a1a1a);
+  border-radius: 4px;
+}
+
+.suggestion-preview summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.suggestion-preview summary:hover {
+  color: var(--text-primary, #fff);
+}
+
+.suggestion-preview pre {
+  margin: 0;
+  padding: 12px;
+  font-size: 11px;
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+  color: var(--text-primary, #fff);
+  background: var(--bg-secondary, #1a1a1a);
+  border-top: 1px solid var(--border-color, #333);
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--border-color, #333);
+  background: var(--bg-quaternary, #282828);
+}
+
+.suggestion-action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.suggestion-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.suggestion-action-btn.approve {
+  background: var(--accent-color, #4a9eff);
+  border: none;
+  color: white;
+}
+
+.suggestion-action-btn.approve:hover:not(:disabled) {
+  background: var(--accent-hover, #3a8eef);
+}
+
+.suggestion-action-btn.reject {
+  background: transparent;
+  border: 1px solid #f87171;
+  color: #f87171;
+}
+
+.suggestion-action-btn.reject:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.suggestion-action-btn.dismiss {
+  background: transparent;
+  border: 1px solid var(--border-color, #444);
+  color: var(--text-secondary, #888);
+}
+
+.suggestion-action-btn.dismiss:hover:not(:disabled) {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}

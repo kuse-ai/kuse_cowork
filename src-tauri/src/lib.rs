@@ -7,6 +7,7 @@ mod llm_client;
 mod mcp;
 mod skills;
 mod tools;
+mod trace;
 
 use commands::AppState;
 use mcp::MCPManager;
@@ -21,6 +22,9 @@ pub fn run() {
 
     // Initialize MCP tables
     db.create_mcp_tables().expect("Failed to create MCP tables");
+
+    // Initialize Trace tables
+    db.create_trace_tables().expect("Failed to create Trace tables");
 
     // Initialize MCP manager
     let mcp_manager = Arc::new(MCPManager::new());
@@ -84,6 +88,25 @@ pub fn run() {
             commands::fetch_mcp_app_resource,
             commands::get_mcp_app_tools,
             commands::create_mcp_app_instance,
+            // Trace commands
+            commands::log_trace,
+            commands::list_traces,
+            commands::delete_trace,
+            commands::clear_traces,
+            commands::get_trace_settings,
+            commands::save_trace_settings,
+            // Suggestion commands
+            commands::list_suggestions,
+            commands::update_suggestion_status,
+            commands::delete_suggestion,
+            commands::generate_suggestions,
+            commands::apply_suggestion,
+            // Browser commands
+            commands::open_browser_window,
+            commands::create_embedded_browser,
+            commands::update_embedded_browser_bounds,
+            commands::navigate_embedded_browser,
+            commands::close_embedded_browser,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

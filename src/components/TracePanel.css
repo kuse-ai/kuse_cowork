@@ -1,0 +1,324 @@
+.trace-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary, #1a1a1a);
+  border-left: 1px solid var(--border-color, #333);
+}
+
+.trace-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #333);
+  background: var(--bg-tertiary, #222);
+}
+
+.trace-panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.trace-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.trace-toggle-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 4px;
+  background: var(--bg-secondary, #1a1a1a);
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trace-toggle-btn.active {
+  background: var(--accent-color, #4a9eff);
+  border-color: var(--accent-color, #4a9eff);
+  color: white;
+}
+
+.trace-toggle-btn:hover {
+  background: var(--bg-hover, #333);
+}
+
+.trace-toggle-btn.active:hover {
+  background: var(--accent-hover, #3a8eef);
+}
+
+.trace-clear-btn,
+.trace-close-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trace-clear-btn:hover,
+.trace-close-btn:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+/* Suggestions Section */
+.suggestions-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #333);
+}
+
+.suggestions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.generate-suggestions-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  border: 1px solid var(--accent-color, #4a9eff);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent-color, #4a9eff);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.generate-suggestions-btn:hover:not(:disabled) {
+  background: var(--accent-color, #4a9eff);
+  color: white;
+}
+
+.generate-suggestions-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.suggestions-empty {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+}
+
+.suggestions-empty .hint {
+  font-size: 12px;
+  color: var(--text-tertiary, #666);
+  margin-top: 4px;
+}
+
+.suggestion-card {
+  background: var(--bg-tertiary, #222);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.suggestion-content {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.suggestion-icon {
+  font-size: 18px;
+  color: var(--accent-color, #4a9eff);
+}
+
+.suggestion-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #fff);
+  margin-bottom: 4px;
+}
+
+.suggestion-desc {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  line-height: 1.4;
+}
+
+.suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.suggestion-approve-btn,
+.suggestion-dismiss-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.suggestion-approve-btn {
+  background: var(--accent-color, #4a9eff);
+  border: none;
+  color: white;
+}
+
+.suggestion-approve-btn:hover {
+  background: var(--accent-hover, #3a8eef);
+}
+
+.suggestion-dismiss-btn {
+  background: transparent;
+  border: 1px solid var(--border-color, #444);
+  color: var(--text-secondary, #888);
+}
+
+.suggestion-dismiss-btn:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+/* Traces Section */
+.traces-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.traces-loading,
+.traces-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+}
+
+.traces-empty .hint {
+  font-size: 12px;
+  color: var(--text-tertiary, #666);
+  margin-top: 4px;
+}
+
+.traces-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Trace Chips */
+.trace-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-tertiary, #222);
+  border-radius: 6px;
+  border-left: 3px solid var(--border-color, #444);
+  transition: background 0.15s ease;
+}
+
+.trace-chip:hover {
+  background: var(--bg-hover, #2a2a2a);
+}
+
+/* Event type colors */
+.trace-chip.edit {
+  border-left-color: #4ade80;
+}
+
+.trace-chip.browse {
+  border-left-color: #60a5fa;
+}
+
+.trace-chip.search {
+  border-left-color: #fbbf24;
+}
+
+.trace-chip.tool_start {
+  border-left-color: #a78bfa;
+}
+
+.trace-chip.tool_end {
+  border-left-color: #22d3ee;
+}
+
+.trace-chip.approval {
+  border-left-color: #f472b6;
+}
+
+.trace-chip-icon {
+  font-size: 12px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary, #1a1a1a);
+  border-radius: 4px;
+  color: var(--text-secondary, #888);
+  flex-shrink: 0;
+}
+
+.trace-chip-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trace-chip-label {
+  font-size: 12px;
+  color: var(--text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trace-chip-time {
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+}
+
+.load-more-btn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 4px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.load-more-btn:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}

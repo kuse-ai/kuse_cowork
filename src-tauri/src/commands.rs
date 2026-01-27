@@ -1,6 +1,7 @@
 use crate::agent::{AgentConfig, AgentContent, AgentEvent, AgentLoop, AgentMessage};
 use crate::claude::{ClaudeClient, Message as ClaudeMessage};
 use crate::database::{Conversation, DataPanel, Database, Message, PlanStep, Settings, Task, TaskMessage};
+use crate::trace::{Trace, TraceInput, TraceSettings, Suggestion};
 use crate::excel::{
     self, ApplyResult, CellEdit, ExcelError, ExcelReadOptions, ExcelReadResult,
     ExcelSchema, ExcelWatcher, FileChangeEvent, ValidationResult, create_event_channel,
@@ -1954,4 +1955,411 @@ pub async fn create_mcp_app_instance(
     };
 
     Ok(instance)
+}
+
+// ==================== Trace Commands ====================
+
+/// Log a new trace event
+#[command]
+pub async fn log_trace(
+    state: State<'_, Arc<AppState>>,
+    input: TraceInput,
+) -> Result<Trace, CommandError> {
+    state.db.log_trace(&input).map_err(Into::into)
+}
+
+/// List traces for a document
+#[command]
+pub async fn list_traces(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+    limit: Option<u32>,
+    before_timestamp: Option<i64>,
+) -> Result<Vec<Trace>, CommandError> {
+    state.db.list_traces(&doc_id, limit, before_timestamp).map_err(Into::into)
+}
+
+/// Delete a specific trace
+#[command]
+pub async fn delete_trace(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), CommandError> {
+    state.db.delete_trace(&id).map_err(Into::into)
+}
+
+/// Clear all traces for a document
+#[command]
+pub async fn clear_traces(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+) -> Result<u64, CommandError> {
+    state.db.clear_traces(&doc_id).map_err(Into::into)
+}
+
+/// Get trace settings for a document
+#[command]
+pub async fn get_trace_settings(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+) -> Result<TraceSettings, CommandError> {
+    state.db.get_trace_settings(&doc_id).map_err(Into::into)
+}
+
+/// Save trace settings for a document
+#[command]
+pub async fn save_trace_settings(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+    settings: TraceSettings,
+) -> Result<(), CommandError> {
+    state.db.save_trace_settings(&doc_id, &settings).map_err(Into::into)
+}
+
+// ==================== Suggestion Commands ====================
+
+/// List suggestions for a document
+#[command]
+pub async fn list_suggestions(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+    status: Option<String>,
+) -> Result<Vec<Suggestion>, CommandError> {
+    state.db.list_suggestions(&doc_id, status.as_deref()).map_err(Into::into)
+}
+
+/// Update suggestion status (approve/reject)
+#[command]
+pub async fn update_suggestion_status(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    status: String,
+) -> Result<(), CommandError> {
+    state.db.update_suggestion_status(&id, &status).map_err(Into::into)
+}
+
+/// Delete a suggestion
+#[command]
+pub async fn delete_suggestion(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), CommandError> {
+    state.db.delete_suggestion(&id).map_err(Into::into)
+}
+
+/// Generate AI suggestions based on recent trace history
+#[command]
+pub async fn generate_suggestions(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+) -> Result<Vec<Suggestion>, CommandError> {
+    use crate::llm_client::{LLMClient, Message};
+
+    let settings = state.db.get_settings()?;
+
+    if settings.api_key.is_empty() && !settings.allows_empty_api_key() {
+        return Err(CommandError {
+            message: "API key not configured".to_string(),
+        });
+    }
+
+    // Get recent traces
+    let traces = state.db.list_traces(&doc_id, Some(50), None)?;
+
+    if traces.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Build context from traces
+    let trace_summary: Vec<String> = traces
+        .iter()
+        .map(|t| {
+            let payload_str = serde_json::to_string(&t.payload).unwrap_or_default();
+            format!(
+                "- {} at {}: {}",
+                t.event_type,
+                t.created_at,
+                payload_str.chars().take(100).collect::<String>()
+            )
+        })
+        .collect();
+
+    let prompt = format!(
+        r#"Based on the following user activity trace, suggest helpful actions the user might want to take.
+
+Recent activity:
+{}
+
+Generate 1-3 suggestions in JSON format. Each suggestion should have:
+- suggestion_type: one of "edit", "add_section", "search", "refactor"
+- title: short title (under 50 chars)
+- description: helpful description (under 150 chars)
+- payload: relevant parameters for the action
+
+Respond ONLY with a JSON array of suggestions. Example:
+[{{"suggestion_type": "add_section", "title": "Add error handling", "description": "Based on your code edits, you might want to add error handling for edge cases", "payload": {{"section": "error_handling"}}}}]"#,
+        trace_summary.join("\n")
+    );
+
+    // Create LLM client
+    let provider_id = settings.get_provider();
+    let llm_client = LLMClient::new(
+        settings.api_key.clone(),
+        Some(settings.base_url.clone()),
+        Some(&provider_id),
+        Some(&settings.model),
+    );
+
+    let messages = vec![Message {
+        role: "user".to_string(),
+        content: prompt,
+    }];
+
+    // Call LLM
+    let response = llm_client
+        .send_message(messages, &settings.model, settings.max_tokens, Some(settings.temperature))
+        .await
+        .map_err(|e| CommandError {
+            message: format!("LLM error: {}", e),
+        })?;
+
+    // Parse suggestions from response
+    let suggestions = parse_suggestions_from_response(&response, &doc_id);
+
+    // Save suggestions to database
+    for suggestion in &suggestions {
+        let _ = state.db.save_suggestion(&doc_id, suggestion);
+    }
+
+    Ok(suggestions)
+}
+
+fn parse_suggestions_from_response(response: &str, _doc_id: &str) -> Vec<Suggestion> {
+    // Try to find JSON array in response
+    let json_start = response.find('[');
+    let json_end = response.rfind(']');
+
+    if let (Some(start), Some(end)) = (json_start, json_end) {
+        let json_str = &response[start..=end];
+        if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(json_str) {
+            return parsed
+                .into_iter()
+                .filter_map(|v| {
+                    let suggestion_type = v.get("suggestion_type")?.as_str()?.to_string();
+                    let title = v.get("title")?.as_str()?.to_string();
+                    let description = v.get("description")?.as_str()?.to_string();
+                    let payload = v.get("payload").cloned().unwrap_or(serde_json::json!({}));
+
+                    Some(Suggestion {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        suggestion_type,
+                        title,
+                        description,
+                        payload,
+                        status: "pending".to_string(),
+                        created_at: chrono::Utc::now().timestamp_millis(),
+                    })
+                })
+                .collect();
+        }
+    }
+
+    Vec::new()
+}
+
+/// Open a URL in a new webview window (bypasses X-Frame-Options)
+#[command]
+pub async fn open_browser_window(
+    app: tauri::AppHandle,
+    url: String,
+    title: Option<String>,
+) -> Result<(), CommandError> {
+    use tauri::WebviewWindowBuilder;
+    use tauri::WebviewUrl;
+
+    let window_title = title.unwrap_or_else(|| "Browser".to_string());
+    let window_label = format!("browser-{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("window"));
+
+    WebviewWindowBuilder::new(
+        &app,
+        &window_label,
+        WebviewUrl::External(url.parse().map_err(|e| CommandError {
+            message: format!("Invalid URL: {}", e),
+        })?),
+    )
+    .title(&window_title)
+    .inner_size(1024.0, 768.0)
+    .min_inner_size(400.0, 300.0)
+    .center()
+    .build()
+    .map_err(|e| CommandError {
+        message: format!("Failed to create browser window: {}", e),
+    })?;
+
+    Ok(())
+}
+
+/// Create an embedded webview as a child of the main window (true side panel)
+#[command]
+pub async fn create_embedded_browser(
+    app: tauri::AppHandle,
+    url: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<String, CommandError> {
+    use tauri::{Manager, WebviewUrl, WebviewBuilder};
+
+    let webview_label = "embedded-browser";
+
+    println!("create_embedded_browser called: url={}, x={}, y={}, w={}, h={}", url, x, y, width, height);
+
+    // Check if embedded browser already exists
+    if let Some(existing) = app.get_webview(webview_label) {
+        println!("Embedded browser already exists, navigating...");
+        // Navigate existing webview to new URL
+        existing.navigate(url.parse().map_err(|e| CommandError {
+            message: format!("Invalid URL: {}", e),
+        })?).map_err(|e| CommandError {
+            message: format!("Failed to navigate: {}", e),
+        })?;
+        return Ok(webview_label.to_string());
+    }
+
+    // Try to get the main window
+    // First try get_window, if that fails, try to get from webview_window
+    let main_window = if let Some(window) = app.get_window("main") {
+        println!("Got main window via get_window");
+        window
+    } else {
+        // List available windows for debugging
+        let windows: Vec<_> = app.windows().keys().cloned().collect();
+        println!("Available windows: {:?}", windows);
+
+        // Try to find any window
+        let first_window = app.windows().values().next().cloned();
+        first_window.ok_or_else(|| {
+            println!("ERROR: No windows found!");
+            CommandError {
+                message: "No windows found".to_string(),
+            }
+        })?
+    };
+
+    println!("Got window: {:?}, creating child webview...", main_window.label());
+
+    // Create a child webview embedded in the main window
+    let webview_builder = WebviewBuilder::new(
+        webview_label,
+        WebviewUrl::External(url.parse().map_err(|e| CommandError {
+            message: format!("Invalid URL: {}", e),
+        })?),
+    );
+
+    let webview = main_window.add_child(
+        webview_builder,
+        tauri::LogicalPosition::new(x, y),
+        tauri::LogicalSize::new(width, height),
+    ).map_err(|e| {
+        println!("ERROR creating child webview: {}", e);
+        CommandError {
+            message: format!("Failed to create embedded browser: {}", e),
+        }
+    })?;
+
+    println!("Child webview created successfully: {:?}", webview.label());
+
+    Ok(webview_label.to_string())
+}
+
+/// Update the position and size of the embedded browser
+#[command]
+pub async fn update_embedded_browser_bounds(
+    app: tauri::AppHandle,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), CommandError> {
+    use tauri::Manager;
+
+    let webview = app.get_webview("embedded-browser").ok_or_else(|| CommandError {
+        message: "Embedded browser not found".to_string(),
+    })?;
+
+    webview.set_position(tauri::LogicalPosition::new(x, y)).map_err(|e| CommandError {
+        message: format!("Failed to set position: {}", e),
+    })?;
+
+    webview.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| CommandError {
+        message: format!("Failed to set size: {}", e),
+    })?;
+
+    Ok(())
+}
+
+/// Navigate the embedded browser to a new URL
+#[command]
+pub async fn navigate_embedded_browser(
+    app: tauri::AppHandle,
+    url: String,
+) -> Result<(), CommandError> {
+    use tauri::Manager;
+
+    let webview = app.get_webview("embedded-browser").ok_or_else(|| CommandError {
+        message: "Embedded browser not found".to_string(),
+    })?;
+
+    webview.navigate(url.parse().map_err(|e| CommandError {
+        message: format!("Invalid URL: {}", e),
+    })?).map_err(|e| CommandError {
+        message: format!("Failed to navigate: {}", e),
+    })?;
+
+    Ok(())
+}
+
+/// Close the embedded browser
+#[command]
+pub async fn close_embedded_browser(
+    app: tauri::AppHandle,
+) -> Result<(), CommandError> {
+    use tauri::Manager;
+
+    if let Some(webview) = app.get_webview("embedded-browser") {
+        webview.close().map_err(|e| CommandError {
+            message: format!("Failed to close browser: {}", e),
+        })?;
+    }
+
+    Ok(())
+}
+
+/// Apply an approved suggestion
+#[command]
+pub async fn apply_suggestion(
+    state: State<'_, Arc<AppState>>,
+    suggestion_id: String,
+) -> Result<serde_json::Value, CommandError> {
+    // Get the suggestion
+    let suggestions = state.db.list_suggestions("", None)?;
+    let suggestion = suggestions
+        .into_iter()
+        .find(|s| s.id == suggestion_id)
+        .ok_or_else(|| CommandError {
+            message: "Suggestion not found".to_string(),
+        })?;
+
+    // Update status to approved
+    state.db.update_suggestion_status(&suggestion_id, "approved")?;
+
+    // Return the suggestion payload for the frontend to handle
+    // The actual application logic depends on the suggestion type and will be
+    // handled by the frontend or additional backend logic
+    Ok(serde_json::json!({
+        "applied": true,
+        "suggestion_type": suggestion.suggestion_type,
+        "payload": suggestion.payload,
+    }))
 }
