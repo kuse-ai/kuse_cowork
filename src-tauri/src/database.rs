@@ -180,7 +180,7 @@ impl Database {
                 std::io::ErrorKind::NotFound,
                 "Could not find data directory",
             )))?;
-        Ok(data_dir.join("kuse-cowork").join("kuse-cowork.db"))
+        Ok(data_dir.join("kuse_cowork").join("kuse_cowork.db"))
     }
 
     fn init_tables(&self) -> Result<(), DbError> {

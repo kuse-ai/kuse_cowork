@@ -121,12 +121,12 @@ mod tests {
     #[test]
     fn test_resolve_path_home_expansion() {
         // Test home directory expansion
-        let result = resolve_path("~/.kuse-cowork/test", None);
+        let result = resolve_path("~/.kuse_cowork/test", None);
         assert!(result.is_ok());
 
         let path = result.unwrap();
         assert!(path.is_absolute());
-        assert!(path.to_string_lossy().contains(".kuse-cowork/test"));
+        assert!(path.to_string_lossy().contains(".kuse_cowork/test"));
         assert!(!path.to_string_lossy().starts_with("~"));
     }
 
