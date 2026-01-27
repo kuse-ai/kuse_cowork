@@ -2,12 +2,14 @@ mod agent;
 mod claude;
 mod commands;
 mod database;
+mod docs;
 mod excel;
 mod llm_client;
 mod mcp;
 mod skills;
 mod tools;
 mod trace;
+mod workstream;
 
 use commands::AppState;
 use mcp::MCPManager;
@@ -25,6 +27,12 @@ pub fn run() {
 
     // Initialize Trace tables
     db.create_trace_tables().expect("Failed to create Trace tables");
+
+    // Initialize Document tables
+    db.create_docs_table().expect("Failed to create Docs tables");
+
+    // Initialize WorkStream tables (lean activity tracking)
+    db.create_workstream_tables().expect("Failed to create WorkStream tables");
 
     // Initialize MCP manager
     let mcp_manager = Arc::new(MCPManager::new());
@@ -107,6 +115,24 @@ pub fn run() {
             commands::update_embedded_browser_bounds,
             commands::navigate_embedded_browser,
             commands::close_embedded_browser,
+            // Document commands
+            commands::create_document,
+            commands::get_document,
+            commands::update_document,
+            commands::list_documents,
+            commands::delete_document,
+            // WorkStream commands (lean activity tracking)
+            commands::ws_create_block,
+            commands::ws_create_manual_block,
+            commands::ws_update_block,
+            commands::ws_get_block,
+            commands::ws_list_blocks,
+            commands::ws_delete_block,
+            commands::ws_get_timeline,
+            commands::ws_enhance_summary,
+            commands::ws_create_milestone,
+            commands::ws_list_milestones,
+            commands::ws_cleanup,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

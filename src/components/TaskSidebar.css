@@ -218,3 +218,130 @@
   opacity: 1;
   box-shadow: 0 0 0 3px var(--accent);
 }
+
+/* Document List */
+.doc-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.doc-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  padding: 0 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.new-doc-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius-sm);
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.new-doc-btn:hover {
+  opacity: 0.9;
+}
+
+.no-docs {
+  padding: 1rem 1.25rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.no-docs p {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.doc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-left: 2px solid transparent;
+  margin: 0 0.25rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.doc-item:hover {
+  background: var(--accent);
+}
+
+.doc-item.active {
+  background: var(--accent);
+  border-left-color: var(--primary);
+}
+
+.doc-icon {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+}
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-item-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.doc-date {
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+
+.doc-delete-btn {
+  flex-shrink: 0;
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  box-shadow: none;
+}
+
+.doc-item:hover .doc-delete-btn {
+  opacity: 1;
+}
+
+.doc-delete-btn:hover {
+  background: var(--destructive);
+  color: white;
+}

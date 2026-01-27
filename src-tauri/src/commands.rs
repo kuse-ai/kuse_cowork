@@ -1,6 +1,7 @@
 use crate::agent::{AgentConfig, AgentContent, AgentEvent, AgentLoop, AgentMessage};
 use crate::claude::{ClaudeClient, Message as ClaudeMessage};
 use crate::database::{Conversation, DataPanel, Database, Message, PlanStep, Settings, Task, TaskMessage};
+use crate::docs::{Document, CreateDocumentInput, UpdateDocumentInput};
 use crate::trace::{Trace, TraceInput, TraceSettings, Suggestion};
 use crate::excel::{
     self, ApplyResult, CellEdit, ExcelError, ExcelReadOptions, ExcelReadResult,
@@ -2362,4 +2363,203 @@ pub async fn apply_suggestion(
         "suggestion_type": suggestion.suggestion_type,
         "payload": suggestion.payload,
     }))
+}
+
+// ==================== Document Commands ====================
+
+/// Create a new document
+#[command]
+pub async fn create_document(
+    state: State<'_, Arc<AppState>>,
+    input: CreateDocumentInput,
+) -> Result<Document, CommandError> {
+    let doc = state.db.create_document(&input)?;
+    Ok(doc)
+}
+
+/// Get a document by ID
+#[command]
+pub async fn get_document(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<Option<Document>, CommandError> {
+    let doc = state.db.get_document(&id)?;
+    Ok(doc)
+}
+
+/// Update a document
+#[command]
+pub async fn update_document(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    input: UpdateDocumentInput,
+) -> Result<Option<Document>, CommandError> {
+    let doc = state.db.update_document(&id, &input)?;
+    Ok(doc)
+}
+
+/// List all documents
+#[command]
+pub async fn list_documents(
+    state: State<'_, Arc<AppState>>,
+) -> Result<Vec<Document>, CommandError> {
+    let docs = state.db.list_documents()?;
+    Ok(docs)
+}
+
+/// Delete a document
+#[command]
+pub async fn delete_document(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<bool, CommandError> {
+    let deleted = state.db.delete_document(&id)?;
+    Ok(deleted)
+}
+
+// ==================== WorkStream Commands (Lean Activity Tracking) ====================
+
+use crate::workstream::{
+    WorkBlock as WsWorkBlock, CreateBlockInput, ManualBlockInput, UpdateBlockInput,
+    WorkBlockQuery, Timeline as WsTimeline, MilestoneInput, Milestone,
+    CleanupResult,
+};
+
+/// Create a work block from buffer data
+#[command]
+pub async fn ws_create_block(
+    state: State<'_, Arc<AppState>>,
+    input: CreateBlockInput,
+) -> Result<WsWorkBlock, CommandError> {
+    state.db.create_ws_block(&input).map_err(Into::into)
+}
+
+/// Create a manual work block (user-entered)
+#[command]
+pub async fn ws_create_manual_block(
+    state: State<'_, Arc<AppState>>,
+    input: ManualBlockInput,
+) -> Result<WsWorkBlock, CommandError> {
+    state.db.create_manual_block(&input).map_err(Into::into)
+}
+
+/// Update a work block (user edits: summary, notes, tags, pin)
+#[command]
+pub async fn ws_update_block(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    input: UpdateBlockInput,
+) -> Result<Option<WsWorkBlock>, CommandError> {
+    state.db.update_work_block(&id, &input).map_err(Into::into)
+}
+
+/// Get a work block by ID
+#[command]
+pub async fn ws_get_block(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<Option<WsWorkBlock>, CommandError> {
+    state.db.get_work_block_by_id(&id).map_err(Into::into)
+}
+
+/// List work blocks with filtering
+#[command]
+pub async fn ws_list_blocks(
+    state: State<'_, Arc<AppState>>,
+    query: WorkBlockQuery,
+) -> Result<Vec<WsWorkBlock>, CommandError> {
+    state.db.list_work_blocks(&query).map_err(Into::into)
+}
+
+/// Delete a work block
+#[command]
+pub async fn ws_delete_block(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<bool, CommandError> {
+    state.db.delete_work_block(&id).map_err(Into::into)
+}
+
+/// Get timeline (recent work blocks)
+#[command]
+pub async fn ws_get_timeline(
+    state: State<'_, Arc<AppState>>,
+    limit: Option<i32>,
+) -> Result<WsTimeline, CommandError> {
+    state.db.get_workstream_timeline(limit).map_err(Into::into)
+}
+
+/// AI-enhance a work block summary
+#[command]
+pub async fn ws_enhance_summary(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<String, CommandError> {
+    use crate::workstream::WorkStreamSummarizer;
+
+    let settings = state.db.get_settings()?;
+
+    if settings.api_key.is_empty() && !settings.allows_empty_api_key() {
+        return Err(CommandError {
+            message: "API key not configured".to_string(),
+        });
+    }
+
+    // Get work block
+    let block = state.db.get_work_block_by_id(&id)?
+        .ok_or_else(|| CommandError {
+            message: "Work block not found".to_string(),
+        })?;
+
+    // Create summarizer and generate enhanced summary
+    let provider_id = settings.get_provider();
+    let summarizer = WorkStreamSummarizer::new(
+        settings.api_key,
+        settings.model,
+        Some(&provider_id),
+    );
+
+    let enhanced_summary = summarizer.enhance_summary(&block).await
+        .map_err(|e| CommandError { message: e })?;
+
+    // Update work block with new auto_summary
+    // (User can still override with user_summary)
+    state.db.update_work_block(&id, &UpdateBlockInput {
+        user_summary: None, // Don't override user's custom summary
+        notes: None,
+        tags: None,
+        is_pinned: None,
+    })?;
+
+    Ok(enhanced_summary)
+}
+
+/// Create a milestone
+#[command]
+pub async fn ws_create_milestone(
+    state: State<'_, Arc<AppState>>,
+    input: MilestoneInput,
+) -> Result<Milestone, CommandError> {
+    state.db.create_milestone(&input).map_err(Into::into)
+}
+
+/// List milestones
+#[command]
+pub async fn ws_list_milestones(
+    state: State<'_, Arc<AppState>>,
+    context_type: Option<String>,
+    context_id: Option<String>,
+) -> Result<Vec<Milestone>, CommandError> {
+    state.db.list_milestones(
+        context_type.as_deref(),
+        context_id.as_deref(),
+    ).map_err(Into::into)
+}
+
+/// Cleanup old workstream data (called on app startup)
+#[command]
+pub async fn ws_cleanup(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CleanupResult, CommandError> {
+    state.db.cleanup_workstream().map_err(Into::into)
 }

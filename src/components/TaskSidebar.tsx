@@ -1,5 +1,6 @@
-import { Component, For, Show } from "solid-js";
-import { Task } from "../lib/tauri-api";
+import { Component, For, Show, createEffect, onMount } from "solid-js";
+import { Task, Document } from "../lib/tauri-api";
+import { useDocs } from "../stores/docs";
 import "./TaskSidebar.css";
 
 interface TaskSidebarProps {
@@ -13,12 +14,24 @@ interface TaskSidebarProps {
   onDataClick: () => void;
   onTraceClick: () => void;
   onBrowserClick: () => void;
+  onActivityClick: () => void;
+  onDocClick: () => void;
+  onSelectDoc: (doc: Document) => void;
   showDataPanels: boolean;
   showTracePanel: boolean;
   showBrowserPanel: boolean;
+  showActivityPanel: boolean;
+  showDocEditor: boolean;
+  activeDocId: string | null;
 }
 
 const TaskSidebar: Component<TaskSidebarProps> = (props) => {
+  const { documents, loadDocuments, createDocument, deleteDocument } = useDocs();
+
+  onMount(() => {
+    loadDocuments();
+  });
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -47,6 +60,18 @@ const TaskSidebar: Component<TaskSidebarProps> = (props) => {
     } else {
       return date.toLocaleDateString();
     }
+  };
+
+  const handleNewDocument = async () => {
+    const doc = await createDocument({ title: "Untitled Document" });
+    if (doc) {
+      props.onSelectDoc(doc);
+    }
+  };
+
+  const handleDeleteDoc = async (e: Event, docId: string) => {
+    e.stopPropagation();
+    await deleteDocument(docId);
   };
 
   return (
@@ -96,7 +121,61 @@ const TaskSidebar: Component<TaskSidebarProps> = (props) => {
         </Show>
       </div>
 
+      {/* Documents Section */}
+      <div class="doc-list">
+        <div class="doc-list-header">
+          <span>Documents</span>
+          <button class="new-doc-btn" onClick={handleNewDocument} title="New Document">
+            +
+          </button>
+        </div>
+        <Show
+          when={documents().length > 0}
+          fallback={
+            <div class="no-docs">
+              <p>No documents</p>
+            </div>
+          }
+        >
+          <For each={documents()}>
+            {(doc) => (
+              <div
+                class={`doc-item ${props.activeDocId === doc.id ? "active" : ""}`}
+                onClick={() => props.onSelectDoc(doc)}
+              >
+                <span class="doc-icon">📄</span>
+                <div class="doc-info">
+                  <div class="doc-item-title">{doc.title || "Untitled"}</div>
+                  <div class="doc-date">{formatDate(doc.updated_at)}</div>
+                </div>
+                <button
+                  class="doc-delete-btn"
+                  onClick={(e) => handleDeleteDoc(e, doc.id)}
+                  title="Delete document"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </For>
+        </Show>
+      </div>
+
       <div class="sidebar-footer">
+        <button
+          class={`footer-btn primary-btn ${props.showDocEditor ? "active" : ""}`}
+          onClick={props.onDocClick}
+          title="Document Editor"
+        >
+          Docs
+        </button>
+        <button
+          class={`footer-btn primary-btn ${props.showActivityPanel ? "active" : ""}`}
+          onClick={props.onActivityClick}
+          title="Activity Timeline"
+        >
+          Activity
+        </button>
         <button
           class={`footer-btn primary-btn ${props.showTracePanel ? "active" : ""}`}
           onClick={props.onTraceClick}

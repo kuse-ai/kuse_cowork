@@ -33,7 +33,6 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
   const logBrowseTrace = (navigatedUrl: string) => {
     if (props.docId) {
       logTrace({
-        task_id: props.docId,
         doc_id: props.docId,
         event_type: "browse",
         payload: { url: navigatedUrl },

@@ -134,6 +134,25 @@ export interface Suggestion {
   created_at: number;
 }
 
+// Document types
+export interface Document {
+  id: string;
+  title: string;
+  content: string; // HTML content from TipTap editor
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateDocumentInput {
+  title: string;
+  content?: string;
+}
+
+export interface UpdateDocumentInput {
+  title?: string;
+  content?: string;
+}
+
 // Enhanced chat with tools
 export interface EnhancedChatRequest {
   conversation_id: string;
@@ -832,4 +851,411 @@ export async function closeEmbeddedBrowser(): Promise<void> {
     return;
   }
   return invoke("close_embedded_browser");
+}
+
+// ==================== Document API ====================
+
+/**
+ * Create a new document
+ */
+export async function createDocument(input: CreateDocumentInput): Promise<Document> {
+  if (!isTauri()) {
+    // Web fallback - store in localStorage
+    const doc: Document = {
+      id: crypto.randomUUID(),
+      title: input.title,
+      content: input.content || "",
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    };
+    const docs = JSON.parse(localStorage.getItem("kuse-cowork-documents") || "[]");
+    docs.unshift(doc);
+    localStorage.setItem("kuse-cowork-documents", JSON.stringify(docs));
+    return doc;
+  }
+  return invoke<Document>("create_document", { input });
+}
+
+/**
+ * Get a document by ID
+ */
+export async function getDocument(id: string): Promise<Document | null> {
+  if (!isTauri()) {
+    const docs: Document[] = JSON.parse(localStorage.getItem("kuse-cowork-documents") || "[]");
+    return docs.find((d) => d.id === id) || null;
+  }
+  return invoke<Document | null>("get_document", { id });
+}
+
+/**
+ * Update a document
+ */
+export async function updateDocument(id: string, input: UpdateDocumentInput): Promise<Document | null> {
+  if (!isTauri()) {
+    const docs: Document[] = JSON.parse(localStorage.getItem("kuse-cowork-documents") || "[]");
+    const idx = docs.findIndex((d) => d.id === id);
+    if (idx < 0) return null;
+
+    if (input.title !== undefined) docs[idx].title = input.title;
+    if (input.content !== undefined) docs[idx].content = input.content;
+    docs[idx].updated_at = Date.now();
+
+    localStorage.setItem("kuse-cowork-documents", JSON.stringify(docs));
+    return docs[idx];
+  }
+  return invoke<Document | null>("update_document", { id, input });
+}
+
+/**
+ * List all documents
+ */
+export async function listDocuments(): Promise<Document[]> {
+  if (!isTauri()) {
+    const docs: Document[] = JSON.parse(localStorage.getItem("kuse-cowork-documents") || "[]");
+    return docs.sort((a, b) => b.updated_at - a.updated_at);
+  }
+  return invoke<Document[]>("list_documents");
+}
+
+/**
+ * Delete a document
+ */
+export async function deleteDocument(id: string): Promise<boolean> {
+  if (!isTauri()) {
+    const docs: Document[] = JSON.parse(localStorage.getItem("kuse-cowork-documents") || "[]");
+    const filtered = docs.filter((d) => d.id !== id);
+    localStorage.setItem("kuse-cowork-documents", JSON.stringify(filtered));
+    return docs.length !== filtered.length;
+  }
+  return invoke<boolean>("delete_document", { id });
+}
+
+// ==================== Activity API ====================
+
+// Activity types matching Rust structs
+export type ContextType = "document" | "task" | "browser" | "mixed" | "unknown";
+export type EventType = "edit" | "browse" | "search" | "tool" | "focus" | "blur" | "save" | "export" | "import";
+
+export interface Session {
+  id: string;
+  started_at: number;
+  ended_at: number | null;
+  summary: string | null;
+  total_work_blocks: number;
+  total_duration_mins: number;
+}
+
+export interface WorkBlock {
+  id: string;
+  session_id: string;
+  started_at: number;
+  ended_at: number | null;
+  context_type: ContextType;
+  context_id: string | null;
+  context_title: string | null;
+  summary: string | null;
+  content_snapshot: string | null;
+  edit_count: number;
+  browse_count: number;
+  total_chars_changed: number;
+  research_links: ResearchLink[];
+}
+
+export interface ResearchLink {
+  id: string;
+  work_block_id: string;
+  url: string;
+  title: string | null;
+  extracted_content: string | null;
+  timestamp: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  work_block_id: string | null;
+  session_id: string;
+  timestamp: number;
+  event_type: EventType;
+  context_type: ContextType | null;
+  context_id: string | null;
+  payload: Record<string, unknown>;
+  content_snippet: string | null;
+  archived: boolean;
+}
+
+export interface ActivityEventInput {
+  event_type: string;
+  context_type?: string;
+  context_id?: string;
+  context_title?: string;
+  payload?: Record<string, unknown>;
+  content_snippet?: string;
+}
+
+export interface WorkBlockInput {
+  context_type: string;
+  context_id?: string;
+  context_title?: string;
+  content_snapshot?: string;
+  event_ids: string[];
+}
+
+export interface TimelineQuery {
+  session_id?: string;
+  context_type?: string;
+  context_id?: string;
+  from_timestamp?: number;
+  to_timestamp?: number;
+  limit?: number;
+  include_events?: boolean;
+}
+
+export interface Timeline {
+  session: Session | null;
+  work_blocks: WorkBlock[];
+  total_count: number;
+}
+
+/**
+ * Get or create the current active session
+ */
+export async function getActiveSession(): Promise<Session> {
+  if (!isTauri()) {
+    // Web fallback
+    const stored = localStorage.getItem("kuse-activity-session");
+    if (stored) {
+      const session = JSON.parse(stored);
+      if (!session.ended_at) return session;
+    }
+    const newSession: Session = {
+      id: crypto.randomUUID(),
+      started_at: Date.now(),
+      ended_at: null,
+      summary: null,
+      total_work_blocks: 0,
+      total_duration_mins: 0,
+    };
+    localStorage.setItem("kuse-activity-session", JSON.stringify(newSession));
+    return newSession;
+  }
+  return invoke<Session>("get_active_session");
+}
+
+/**
+ * End the current session
+ */
+export async function endSession(sessionId: string, summary?: string): Promise<void> {
+  if (!isTauri()) {
+    const stored = localStorage.getItem("kuse-activity-session");
+    if (stored) {
+      const session = JSON.parse(stored);
+      session.ended_at = Date.now();
+      session.summary = summary || null;
+      localStorage.setItem("kuse-activity-session", JSON.stringify(session));
+    }
+    return;
+  }
+  return invoke("end_session", { sessionId, summary });
+}
+
+/**
+ * Log an activity event
+ */
+export async function logActivityEvent(input: ActivityEventInput): Promise<ActivityEvent> {
+  if (!isTauri()) {
+    const session = await getActiveSession();
+    const event: ActivityEvent = {
+      id: crypto.randomUUID(),
+      work_block_id: null,
+      session_id: session.id,
+      timestamp: Date.now(),
+      event_type: input.event_type as EventType,
+      context_type: (input.context_type as ContextType) || null,
+      context_id: input.context_id || null,
+      payload: input.payload || {},
+      content_snippet: input.content_snippet || null,
+      archived: false,
+    };
+    const events = JSON.parse(localStorage.getItem("kuse-activity-events") || "[]");
+    events.push(event);
+    localStorage.setItem("kuse-activity-events", JSON.stringify(events.slice(-500)));
+    return event;
+  }
+  return invoke<ActivityEvent>("log_activity_event", { input });
+}
+
+/**
+ * Get unbatched events (not yet in a work block)
+ */
+export async function getUnbatchedEvents(): Promise<ActivityEvent[]> {
+  if (!isTauri()) {
+    const events: ActivityEvent[] = JSON.parse(localStorage.getItem("kuse-activity-events") || "[]");
+    return events.filter((e) => !e.work_block_id);
+  }
+  return invoke<ActivityEvent[]>("get_unbatched_events");
+}
+
+/**
+ * Create a work block from batched events
+ */
+export async function createWorkBlock(input: WorkBlockInput): Promise<WorkBlock> {
+  if (!isTauri()) {
+    const session = await getActiveSession();
+    const block: WorkBlock = {
+      id: crypto.randomUUID(),
+      session_id: session.id,
+      started_at: Date.now(),
+      ended_at: null,
+      context_type: input.context_type as ContextType,
+      context_id: input.context_id || null,
+      context_title: input.context_title || null,
+      summary: null,
+      content_snapshot: input.content_snapshot || null,
+      edit_count: 0,
+      browse_count: 0,
+      total_chars_changed: 0,
+      research_links: [],
+    };
+    const blocks = JSON.parse(localStorage.getItem("kuse-activity-blocks") || "[]");
+    blocks.unshift(block);
+    localStorage.setItem("kuse-activity-blocks", JSON.stringify(blocks.slice(0, 100)));
+    // Mark events as batched
+    const events: ActivityEvent[] = JSON.parse(localStorage.getItem("kuse-activity-events") || "[]");
+    for (const e of events) {
+      if (input.event_ids.includes(e.id)) {
+        e.work_block_id = block.id;
+      }
+    }
+    localStorage.setItem("kuse-activity-events", JSON.stringify(events));
+    return block;
+  }
+  return invoke<WorkBlock>("create_work_block", { input });
+}
+
+/**
+ * Finalize a work block with optional summary
+ */
+export async function finalizeWorkBlock(workBlockId: string, summary?: string): Promise<void> {
+  if (!isTauri()) {
+    const blocks: WorkBlock[] = JSON.parse(localStorage.getItem("kuse-activity-blocks") || "[]");
+    const idx = blocks.findIndex((b) => b.id === workBlockId);
+    if (idx >= 0) {
+      blocks[idx].ended_at = Date.now();
+      blocks[idx].summary = summary || null;
+      localStorage.setItem("kuse-activity-blocks", JSON.stringify(blocks));
+    }
+    return;
+  }
+  return invoke("finalize_work_block", { workBlockId, summary });
+}
+
+/**
+ * Get work block by ID
+ */
+export async function getWorkBlock(workBlockId: string): Promise<WorkBlock | null> {
+  if (!isTauri()) {
+    const blocks: WorkBlock[] = JSON.parse(localStorage.getItem("kuse-activity-blocks") || "[]");
+    return blocks.find((b) => b.id === workBlockId) || null;
+  }
+  return invoke<WorkBlock | null>("get_work_block", { workBlockId });
+}
+
+/**
+ * Get events for a work block
+ */
+export async function getWorkBlockEvents(workBlockId: string): Promise<ActivityEvent[]> {
+  if (!isTauri()) {
+    const events: ActivityEvent[] = JSON.parse(localStorage.getItem("kuse-activity-events") || "[]");
+    return events.filter((e) => e.work_block_id === workBlockId);
+  }
+  return invoke<ActivityEvent[]>("get_work_block_events", { workBlockId });
+}
+
+/**
+ * Add a research link to a work block
+ */
+export async function addResearchLink(
+  workBlockId: string,
+  url: string,
+  title?: string,
+  extractedContent?: string
+): Promise<ResearchLink> {
+  if (!isTauri()) {
+    const link: ResearchLink = {
+      id: crypto.randomUUID(),
+      work_block_id: workBlockId,
+      url,
+      title: title || null,
+      extracted_content: extractedContent || null,
+      timestamp: Date.now(),
+    };
+    // Add to work block
+    const blocks: WorkBlock[] = JSON.parse(localStorage.getItem("kuse-activity-blocks") || "[]");
+    const idx = blocks.findIndex((b) => b.id === workBlockId);
+    if (idx >= 0) {
+      blocks[idx].research_links.push(link);
+      localStorage.setItem("kuse-activity-blocks", JSON.stringify(blocks));
+    }
+    return link;
+  }
+  return invoke<ResearchLink>("add_research_link", { workBlockId, url, title, extractedContent });
+}
+
+/**
+ * Get activity timeline with filtering
+ */
+export async function getActivityTimeline(query: TimelineQuery): Promise<Timeline> {
+  if (!isTauri()) {
+    const blocks: WorkBlock[] = JSON.parse(localStorage.getItem("kuse-activity-blocks") || "[]");
+    let filtered = blocks;
+    if (query.context_type) {
+      filtered = filtered.filter((b) => b.context_type === query.context_type);
+    }
+    if (query.context_id) {
+      filtered = filtered.filter((b) => b.context_id === query.context_id);
+    }
+    if (query.from_timestamp) {
+      filtered = filtered.filter((b) => b.started_at >= query.from_timestamp!);
+    }
+    if (query.to_timestamp) {
+      filtered = filtered.filter((b) => b.started_at <= query.to_timestamp!);
+    }
+    const limited = filtered.slice(0, query.limit || 50);
+    return {
+      session: null,
+      work_blocks: limited,
+      total_count: limited.length,
+    };
+  }
+  return invoke<Timeline>("get_activity_timeline", { query });
+}
+
+/**
+ * Generate AI summary for a work block
+ */
+export async function summarizeWorkBlock(workBlockId: string): Promise<string> {
+  if (!isTauri()) {
+    throw new Error("AI summarization requires the desktop app");
+  }
+  return invoke<string>("summarize_work_block", { workBlockId });
+}
+
+/**
+ * Archive old events
+ */
+export async function archiveOldEvents(beforeTimestamp: number): Promise<number> {
+  if (!isTauri()) {
+    return 0;
+  }
+  return invoke<number>("archive_old_events", { beforeTimestamp });
+}
+
+/**
+ * Compress old work blocks
+ */
+export async function compressOldWorkBlocks(beforeTimestamp: number): Promise<number> {
+  if (!isTauri()) {
+    return 0;
+  }
+  return invoke<number>("compress_old_work_blocks", { beforeTimestamp });
 }

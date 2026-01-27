@@ -1,6 +1,6 @@
 import { Component, Show, createSignal, onMount } from "solid-js";
 import { useSettings, loadSettings } from "./stores/settings";
-import { Task, TaskMessage, AgentEvent, listTasks, createTask, deleteTask, runTaskAgent, getTask, getTaskMessages } from "./lib/tauri-api";
+import { Task, TaskMessage, AgentEvent, Document, listTasks, createTask, deleteTask, runTaskAgent, getTask, getTaskMessages } from "./lib/tauri-api";
 import { MCPAppInstance, createMCPAppInstance } from "./lib/mcp-api";
 import AgentMain from "./components/AgentMain";
 import Settings from "./components/Settings";
@@ -10,10 +10,14 @@ import TaskSidebar from "./components/TaskSidebar";
 import TaskPanel from "./components/TaskPanel";
 import TracePanel from "./components/TracePanel";
 import BrowserPanel from "./components/BrowserPanel";
+import WorkStreamPanel from "./components/WorkStreamPanel";
+import DocEditor from "./components/DocEditor";
 import DataPanelsDock from "./components/DataPanels/DataPanelsDock";
 import ResizablePanels from "./components/ResizablePanels";
 import { showDataPanels, setShowDataPanels, loadPanelState } from "./stores/dataPanels";
 import { useTraces } from "./stores/traces";
+import { useDocs } from "./stores/docs";
+import { createToolTracker } from "./stores/workstream";
 
 interface ToolExecution {
   id: number;
@@ -29,9 +33,18 @@ const App: Component = () => {
   const [showMCP, setShowMCP] = createSignal(false);
   const [showTracePanel, setShowTracePanel] = createSignal(false);
   const [showBrowserPanel, setShowBrowserPanel] = createSignal(false);
+  const [showActivityPanel, setShowActivityPanel] = createSignal(false);
+  const [showDocEditor, setShowDocEditor] = createSignal(false);
+  const [activeDocId, setActiveDocId] = createSignal<string | null>(null);
 
   // Trace hooks
   const { logTrace } = useTraces();
+
+  // WorkStream tool tracking
+  const { trackToolStart, trackToolEnd } = createToolTracker();
+
+  // Docs hooks
+  const { openDocument } = useDocs();
 
   // Task state
   const [tasks, setTasks] = createSignal<Task[]>([]);
@@ -56,9 +69,10 @@ const App: Component = () => {
     if (showSettings()) {
       toggleSettings();
     }
-    if (showMCP()) {
-      setShowMCP(false);
-    }
+    setShowMCP(false);
+    setShowDocEditor(false);
+    setActiveDocId(null);
+    setShowDataPanels(false);
   };
 
   const toggleMCP = () => {
@@ -67,43 +81,81 @@ const App: Component = () => {
     if (showSettings()) {
       toggleSettings();
     }
-    if (showSkills()) {
-      setShowSkills(false);
-    }
+    setShowSkills(false);
+    setShowDocEditor(false);
+    setActiveDocId(null);
+    setShowDataPanels(false);
   };
 
   const handleToggleSettings = () => {
     // Close other panels if open
-    if (showSkills()) {
-      setShowSkills(false);
-    }
-    if (showMCP()) {
-      setShowMCP(false);
-    }
+    setShowSkills(false);
+    setShowMCP(false);
+    setShowDocEditor(false);
+    setActiveDocId(null);
+    setShowDataPanels(false);
     toggleSettings();
   };
 
   const toggleDataPanels = () => {
-    setShowDataPanels(!showDataPanels());
-    if (!showDataPanels()) {
-      setShowTracePanel(false);
+    const newState = !showDataPanels();
+    setShowDataPanels(newState);
+    if (newState) {
+      // Close other main panel views
+      setShowDocEditor(false);
+      setActiveDocId(null);
+      if (showSettings()) toggleSettings();
+      setShowSkills(false);
+      setShowMCP(false);
     }
   };
 
   const toggleTracePanel = () => {
     setShowTracePanel(!showTracePanel());
-    if (!showTracePanel()) {
-      setShowDataPanels(false);
+    if (showTracePanel()) {
       setShowBrowserPanel(false);
     }
   };
 
   const toggleBrowserPanel = () => {
     setShowBrowserPanel(!showBrowserPanel());
-    if (!showBrowserPanel()) {
-      setShowDataPanels(false);
+    if (showBrowserPanel()) {
       setShowTracePanel(false);
+      setShowActivityPanel(false);
     }
+  };
+
+  const toggleActivityPanel = () => {
+    setShowActivityPanel(!showActivityPanel());
+    if (showActivityPanel()) {
+      setShowTracePanel(false);
+      setShowBrowserPanel(false);
+    }
+  };
+
+  const toggleDocEditor = () => {
+    const newState = !showDocEditor();
+    setShowDocEditor(newState);
+    if (newState) {
+      // Close other main panel views
+      setShowDataPanels(false);
+      if (showSettings()) toggleSettings();
+      setShowSkills(false);
+      setShowMCP(false);
+    } else {
+      setActiveDocId(null);
+    }
+  };
+
+  const handleSelectDoc = async (doc: Document) => {
+    setActiveDocId(doc.id);
+    setShowDocEditor(true);
+    // Close other main panel views
+    setShowDataPanels(false);
+    if (showSettings()) toggleSettings();
+    setShowSkills(false);
+    setShowMCP(false);
+    await openDocument(doc.id);
   };
 
   const refreshTasks = async () => {
@@ -215,6 +267,8 @@ const App: Component = () => {
             payload: { tool: event.tool, input: event.input },
           });
         }
+        // Log activity event for tool start
+        trackToolStart(event.tool, event.input);
         break;
       case "tool_end":
         setToolExecutions((prev) => {
@@ -234,6 +288,8 @@ const App: Component = () => {
             payload: { tool: event.tool, success: event.success, result: event.result?.slice(0, 200) },
           });
         }
+        // Log activity event for tool end
+        trackToolEnd(event.tool, event.result?.slice(0, 100), event.success);
         break;
       case "done":
         setActiveTask((prev) => {
@@ -354,9 +410,15 @@ const App: Component = () => {
           onDataClick={toggleDataPanels}
           onTraceClick={toggleTracePanel}
           onBrowserClick={toggleBrowserPanel}
+          onActivityClick={toggleActivityPanel}
+          onDocClick={toggleDocEditor}
+          onSelectDoc={handleSelectDoc}
           showDataPanels={showDataPanels()}
           showTracePanel={showTracePanel()}
           showBrowserPanel={showBrowserPanel()}
+          showActivityPanel={showActivityPanel()}
+          showDocEditor={showDocEditor()}
+          activeDocId={activeDocId()}
         />
         <ResizablePanels
           defaultRightWidth={350}
@@ -373,7 +435,19 @@ const App: Component = () => {
               <Show when={showMCP()}>
                 <MCPSettings onClose={() => setShowMCP(false)} />
               </Show>
-              <Show when={!showSettings() && !showSkills() && !showMCP()}>
+              <Show when={showDocEditor()}>
+                <DocEditor
+                  docId={activeDocId()}
+                  onClose={() => {
+                    setShowDocEditor(false);
+                    setActiveDocId(null);
+                  }}
+                />
+              </Show>
+              <Show when={showDataPanels()}>
+                <DataPanelsDock />
+              </Show>
+              <Show when={!showSettings() && !showSkills() && !showMCP() && !showDocEditor() && !showDataPanels()}>
                 <AgentMain
                   onNewTask={handleNewTask}
                   onContinueTask={handleContinueTask}
@@ -395,10 +469,10 @@ const App: Component = () => {
                 when={showBrowserPanel()}
                 fallback={
                   <Show
-                    when={showTracePanel()}
+                    when={showActivityPanel()}
                     fallback={
                       <Show
-                        when={showDataPanels()}
+                        when={showTracePanel()}
                         fallback={
                           <TaskPanel
                             task={activeTask()}
@@ -407,19 +481,23 @@ const App: Component = () => {
                           />
                         }
                       >
-                        <DataPanelsDock />
+                        <TracePanel
+                          docId={activeDocId() || activeTask()?.id || null}
+                          onClose={() => setShowTracePanel(false)}
+                        />
                       </Show>
                     }
                   >
-                    <TracePanel
-                      docId={activeTask()?.id || null}
-                      onClose={() => setShowTracePanel(false)}
+                    <WorkStreamPanel
+                      contextId={activeDocId() || activeTask()?.id || undefined}
+                      contextType={activeDocId() ? "document" : activeTask() ? "task" : undefined}
+                      onClose={() => setShowActivityPanel(false)}
                     />
                   </Show>
                 }
               >
                 <BrowserPanel
-                  docId={activeTask()?.id || null}
+                  docId={activeDocId() || activeTask()?.id || null}
                   onClose={() => setShowBrowserPanel(false)}
                 />
               </Show>

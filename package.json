@@ -22,10 +22,22 @@
     "@tauri-apps/plugin-fs": "^2.0.0",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "@tauri-apps/plugin-store": "^2.0.0",
-    "solid-js": "^1.8.0"
+    "@tiptap/core": "^3.17.1",
+    "@tiptap/extension-highlight": "^3.17.1",
+    "@tiptap/extension-placeholder": "^3.17.1",
+    "@tiptap/extension-text-align": "^3.17.1",
+    "@tiptap/extension-underline": "^3.17.1",
+    "@tiptap/pm": "^3.17.1",
+    "@tiptap/starter-kit": "^3.17.1",
+    "docx": "^9.5.1",
+    "file-saver": "^2.0.5",
+    "mammoth": "^1.11.0",
+    "solid-js": "^1.8.0",
+    "solid-tiptap": "^0.8.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
+    "@types/file-saver": "^2.0.7",
     "mermaid": "^11.12.2",
     "typescript": "^5.3.0",
     "vite": "^5.4.0",
