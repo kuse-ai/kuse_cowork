@@ -15,6 +15,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^0.1.0",
     "@solidjs/router": "^0.14.0",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.6.0",

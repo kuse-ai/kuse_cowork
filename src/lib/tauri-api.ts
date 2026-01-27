@@ -512,3 +512,75 @@ export async function getSkillsList(): Promise<SkillMetadata[]> {
   }
   return invoke<SkillMetadata[]>("get_skills_list");
 }
+
+// ==================== MCP Apps API ====================
+
+import type {
+  MCPAppInstance,
+  MCPResourceResponse,
+  MCPTool,
+} from "./mcp-apps";
+
+/**
+ * Get all MCP tools that have MCP Apps UI support
+ */
+export async function getMCPAppTools(): Promise<MCPTool[]> {
+  if (!isTauri()) {
+    return [];
+  }
+  return invoke<MCPTool[]>("get_mcp_app_tools");
+}
+
+/**
+ * Fetch a UI resource from an MCP server
+ */
+export async function fetchMCPAppResource(
+  serverId: string,
+  resourceUri: string
+): Promise<MCPResourceResponse> {
+  if (!isTauri()) {
+    throw new Error("MCP Apps require the desktop app");
+  }
+  return invoke<MCPResourceResponse>("fetch_mcp_app_resource", {
+    serverId,
+    resourceUri,
+  });
+}
+
+/**
+ * Create an MCP App instance for rendering
+ */
+export async function createMCPAppInstance(
+  serverId: string,
+  toolName: string,
+  toolResult: unknown
+): Promise<MCPAppInstance> {
+  if (!isTauri()) {
+    throw new Error("MCP Apps require the desktop app");
+  }
+  return invoke<MCPAppInstance>("create_mcp_app_instance", {
+    serverId,
+    toolName,
+    toolResult,
+  });
+}
+
+/**
+ * Execute an MCP tool (reusing existing execute_mcp_tool command)
+ */
+export async function executeMCPTool(
+  serverId: string,
+  toolName: string,
+  parameters: Record<string, unknown>
+): Promise<{ success: boolean; result: unknown; error?: string; ui_resource_uri?: string }> {
+  if (!isTauri()) {
+    throw new Error("MCP tools require the desktop app");
+  }
+  return invoke("execute_mcp_tool", {
+    call: {
+      server_id: serverId,
+      tool_name: toolName,
+      parameters,
+    },
+  });
+}

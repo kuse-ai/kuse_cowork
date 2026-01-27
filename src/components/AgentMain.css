@@ -405,3 +405,12 @@
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
+
+/* MCP Apps inline display */
+.mcp-apps-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  animation: fadeIn 0.3s ease-out;
+}

@@ -1,7 +1,9 @@
 import { Component, Show, For, createSignal } from "solid-js";
 import { Task, TaskMessage, openMultipleFoldersDialog } from "../lib/tauri-api";
+import { MCPAppInstance, createMCPAppInstance, executeMCPTool } from "../lib/mcp-api";
 import { useSettings } from "../stores/settings";
 import { hasExcelContext, generateExcelContext } from "../stores/dataPanels";
+import MCPAppRenderer from "./MCPAppRenderer";
 import "./AgentMain.css";
 
 interface AgentMainProps {
@@ -12,6 +14,12 @@ interface AgentMainProps {
   isRunning: boolean;
   activeTask: Task | null;
   messages: TaskMessage[];
+  /** Active MCP App instances to display inline */
+  activeApps?: MCPAppInstance[];
+  /** Callback when an MCP App is closed */
+  onCloseApp?: (appId: string) => void;
+  /** Callback when a tool result has UI available */
+  onToolWithUI?: (serverId: string, toolName: string, result: unknown) => void;
 }
 
 const AgentMain: Component<AgentMainProps> = (props) => {
@@ -22,6 +30,23 @@ const AgentMain: Component<AgentMainProps> = (props) => {
 
   // Check if we're in an existing conversation
   const isInConversation = () => props.activeTask !== null && props.messages.length > 0;
+
+  // Handle MCP App tool calls from within the app iframe
+  const handleAppToolCall = async (
+    serverId: string,
+    toolName: string,
+    args: Record<string, unknown>
+  ) => {
+    const result = await executeMCPTool({
+      server_id: serverId,
+      tool_name: toolName,
+      parameters: args,
+    });
+    if (!result.success) {
+      throw new Error(result.error || "Tool call failed");
+    }
+    return result.result;
+  };
 
   const handleAddFolders = async () => {
     const folders = await openMultipleFoldersDialog();
@@ -126,6 +151,22 @@ const AgentMain: Component<AgentMainProps> = (props) => {
                 <div class="message assistant streaming">
                   <div class="message-label">Agent</div>
                   <div class="message-content">{props.currentText}</div>
+                </div>
+              </Show>
+
+              {/* Show active MCP Apps inline */}
+              <Show when={props.activeApps && props.activeApps.length > 0}>
+                <div class="mcp-apps-inline">
+                  <For each={props.activeApps}>
+                    {(app) => (
+                      <MCPAppRenderer
+                        instance={app}
+                        onToolCall={handleAppToolCall}
+                        onClose={() => props.onCloseApp?.(app.id)}
+                        initialHeight={350}
+                      />
+                    )}
+                  </For>
                 </div>
               </Show>
             </Show>

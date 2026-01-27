@@ -5,7 +5,7 @@ use crate::excel::{
     self, ApplyResult, CellEdit, ExcelError, ExcelReadOptions, ExcelReadResult,
     ExcelSchema, ExcelWatcher, FileChangeEvent, ValidationResult, create_event_channel,
 };
-use crate::mcp::{MCPManager, MCPServerConfig, MCPServerStatus, MCPToolCall, MCPToolResult};
+use crate::mcp::{MCPManager, MCPServerConfig, MCPServerStatus, MCPToolCall, MCPToolResult, MCPAppInstance, MCPResourceResponse, MCPTool};
 use crate::skills::{SkillMetadata, get_available_skills};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -1875,4 +1875,83 @@ pub async fn list_data_panels(
 ) -> Result<Vec<DataPanel>, CommandError> {
     let panels = state.db.list_data_panels()?;
     Ok(panels)
+}
+
+// ==================== MCP Apps Commands ====================
+
+/// Fetch a UI resource from an MCP server (for rendering MCP Apps)
+#[command]
+pub async fn fetch_mcp_app_resource(
+    state: State<'_, Arc<AppState>>,
+    server_id: String,
+    resource_uri: String,
+) -> Result<MCPResourceResponse, CommandError> {
+    state.mcp_manager
+        .fetch_ui_resource(&server_id, &resource_uri)
+        .await
+        .map_err(|e| CommandError {
+            message: format!("Failed to fetch MCP App resource: {}", e),
+        })
+}
+
+/// Get all MCP tools that have MCP Apps UI support
+#[command]
+pub async fn get_mcp_app_tools(
+    state: State<'_, Arc<AppState>>,
+) -> Result<Vec<MCPTool>, CommandError> {
+    Ok(state.mcp_manager.get_app_tools().await)
+}
+
+/// Create an MCP App instance for rendering
+#[command]
+pub async fn create_mcp_app_instance(
+    state: State<'_, Arc<AppState>>,
+    server_id: String,
+    tool_name: String,
+    tool_result: serde_json::Value,
+) -> Result<MCPAppInstance, CommandError> {
+    // Get the tool to find its UI configuration
+    let tool = state.mcp_manager
+        .get_tool(&server_id, &tool_name)
+        .await
+        .ok_or_else(|| CommandError {
+            message: format!("Tool '{}' not found on server '{}'", tool_name, server_id),
+        })?;
+
+    // Check if tool has UI configuration
+    let ui_config = tool.meta
+        .as_ref()
+        .and_then(|m| m.ui.as_ref())
+        .ok_or_else(|| CommandError {
+            message: format!("Tool '{}' does not support MCP Apps", tool_name),
+        })?;
+
+    // Fetch the UI resource
+    let resource = state.mcp_manager
+        .fetch_ui_resource(&server_id, &ui_config.resource_uri)
+        .await
+        .map_err(|e| CommandError {
+            message: format!("Failed to fetch UI resource: {}", e),
+        })?;
+
+    // Get the HTML content
+    let html_content = resource.contents
+        .first()
+        .and_then(|c| c.text.clone())
+        .ok_or_else(|| CommandError {
+            message: "UI resource did not contain HTML content".to_string(),
+        })?;
+
+    // Create the app instance
+    let instance = MCPAppInstance {
+        id: uuid::Uuid::new_v4().to_string(),
+        server_id,
+        tool_name,
+        html_content,
+        tool_result,
+        permissions: ui_config.permissions.clone().unwrap_or_default(),
+        csp: ui_config.csp.clone(),
+    };
+
+    Ok(instance)
 }

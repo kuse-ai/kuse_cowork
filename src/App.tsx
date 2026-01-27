@@ -1,6 +1,7 @@
 import { Component, Show, createSignal, onMount } from "solid-js";
 import { useSettings, loadSettings } from "./stores/settings";
 import { Task, TaskMessage, AgentEvent, listTasks, createTask, deleteTask, runTaskAgent, getTask, getTaskMessages } from "./lib/tauri-api";
+import { MCPAppInstance, createMCPAppInstance } from "./lib/mcp-api";
 import AgentMain from "./components/AgentMain";
 import Settings from "./components/Settings";
 import SkillsList from "./components/SkillsList";
@@ -30,6 +31,9 @@ const App: Component = () => {
   const [isRunning, setIsRunning] = createSignal(false);
   const [toolExecutions, setToolExecutions] = createSignal<ToolExecution[]>([]);
   const [currentText, setCurrentText] = createSignal("");
+
+  // MCP Apps state
+  const [activeApps, setActiveApps] = createSignal<MCPAppInstance[]>([]);
 
   onMount(async () => {
     await loadSettings();
@@ -271,8 +275,23 @@ const App: Component = () => {
       setTaskMessages([]);
       setCurrentText("");
       setToolExecutions([]);
+      setActiveApps([]);
     }
     await refreshTasks();
+  };
+
+  // MCP Apps handlers
+  const handleCloseApp = (appId: string) => {
+    setActiveApps((prev) => prev.filter((app) => app.id !== appId));
+  };
+
+  const handleToolWithUI = async (serverId: string, toolName: string, result: unknown) => {
+    try {
+      const instance = await createMCPAppInstance(serverId, toolName, result);
+      setActiveApps((prev) => [...prev, instance]);
+    } catch (err) {
+      console.error("Failed to create MCP App instance:", err);
+    }
   };
 
   return (
@@ -308,6 +327,9 @@ const App: Component = () => {
               isRunning={isRunning()}
               activeTask={activeTask()}
               messages={taskMessages()}
+              activeApps={activeApps()}
+              onCloseApp={handleCloseApp}
+              onToolWithUI={handleToolWithUI}
             />
           </Show>
         </main>

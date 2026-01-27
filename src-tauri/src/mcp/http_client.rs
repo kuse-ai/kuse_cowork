@@ -174,4 +174,68 @@ impl HttpMcpClient {
 
         Ok(response_body)
     }
+
+    /// Fetch a resource from the MCP server (used for ui:// resources in MCP Apps)
+    pub async fn read_resource(&self, resource_uri: &str) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        let id = self.next_message_id();
+
+        let request_body = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "resources/read",
+            "params": {
+                "uri": resource_uri
+            }
+        });
+
+        let mut request = self.client.post(&self.base_url)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json");
+
+        // Add session ID if we have one
+        if let Some(ref session_id) = self.session_id {
+            request = request.header("Mcp-Session-Id", session_id);
+        }
+
+        // Add OAuth token if configured
+        if let Some(ref token) = self.oauth_token {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let response = request.json(&request_body).send().await?;
+        let response_body: Value = response.json().await?;
+
+        Ok(response_body)
+    }
+
+    /// List available resources from the MCP server
+    pub async fn list_resources(&self) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        let id = self.next_message_id();
+
+        let request_body = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "resources/list",
+            "params": {}
+        });
+
+        let mut request = self.client.post(&self.base_url)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json");
+
+        // Add session ID if we have one
+        if let Some(ref session_id) = self.session_id {
+            request = request.header("Mcp-Session-Id", session_id);
+        }
+
+        // Add OAuth token if configured
+        if let Some(ref token) = self.oauth_token {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let response = request.json(&request_body).send().await?;
+        let response_body: Value = response.json().await?;
+
+        Ok(response_body)
+    }
 }

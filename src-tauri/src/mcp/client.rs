@@ -134,23 +134,39 @@ impl MCPManager {
                 ).await {
                     Ok(Ok(response)) => {
                         // Parse the JSON-RPC response
+                        // Look up the tool to check if it has UI metadata
+                        let ui_resource_uri = {
+                            let status_map = self.server_status.read().await;
+                            status_map.get(&call.server_id)
+                                .and_then(|status| {
+                                    status.tools.iter()
+                                        .find(|t| t.name == call.tool_name)
+                                        .and_then(|t| t.meta.as_ref())
+                                        .and_then(|m| m.ui.as_ref())
+                                        .map(|ui| ui.resource_uri.clone())
+                                })
+                        };
+
                         if let Some(error) = response.get("error") {
                             MCPToolResult {
                                 success: false,
                                 result: serde_json::Value::Null,
                                 error: Some(format!("Tool execution error: {}", error)),
+                                ui_resource_uri: None,
                             }
                         } else if let Some(result) = response.get("result") {
                             MCPToolResult {
                                 success: true,
                                 result: result.clone(),
                                 error: None,
+                                ui_resource_uri,
                             }
                         } else {
                             MCPToolResult {
                                 success: false,
                                 result: serde_json::Value::Null,
                                 error: Some("Invalid response format".to_string()),
+                                ui_resource_uri: None,
                             }
                         }
                     },
@@ -159,6 +175,7 @@ impl MCPManager {
                             success: false,
                             result: serde_json::Value::Null,
                             error: Some(format!("Tool execution failed: {}", e)),
+                            ui_resource_uri: None,
                         }
                     },
                     Err(_) => {
@@ -166,6 +183,7 @@ impl MCPManager {
                             success: false,
                             result: serde_json::Value::Null,
                             error: Some("Tool execution timed out after 60 seconds".to_string()),
+                            ui_resource_uri: None,
                         }
                     }
                 }
@@ -174,6 +192,7 @@ impl MCPManager {
                 success: false,
                 result: serde_json::Value::Null,
                 error: Some(format!("Server {} not connected", call.server_id)),
+                ui_resource_uri: None,
             }
         }
     }
@@ -227,11 +246,45 @@ impl MCPManager {
                             .cloned()
                             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
+                        // Parse MCP Apps UI metadata if present
+                        let meta = tool.get("_meta").and_then(|meta_val| {
+                            let ui = meta_val.get("ui").and_then(|ui_val| {
+                                let resource_uri = ui_val.get("resourceUri")
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string())?;
+
+                                let permissions = ui_val.get("permissions")
+                                    .and_then(|v| v.as_array())
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                            .collect()
+                                    });
+
+                                let csp = ui_val.get("csp")
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string());
+
+                                Some(MCPToolUI {
+                                    resource_uri,
+                                    permissions,
+                                    csp,
+                                })
+                            });
+
+                            if ui.is_some() {
+                                Some(MCPToolMeta { ui })
+                            } else {
+                                None
+                            }
+                        });
+
                         mcp_tools.push(MCPTool {
                             server_id: server_id.to_string(),
                             name,
                             description,
                             input_schema,
+                            meta,
                         });
                     }
                 }
@@ -239,6 +292,87 @@ impl MCPManager {
         }
 
         Ok(mcp_tools)
+    }
+
+    /// Fetch a UI resource from an MCP server (for MCP Apps)
+    pub async fn fetch_ui_resource(&self, server_id: &str, resource_uri: &str) -> Result<MCPResourceResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let clients = self.clients.read().await;
+
+        let client = clients.get(server_id)
+            .ok_or_else(|| format!("Server {} not connected", server_id))?;
+
+        let response = client.http_client.read_resource(resource_uri).await?;
+
+        // Parse the response
+        if let Some(error) = response.get("error") {
+            return Err(format!("Resource fetch error: {}", error).into());
+        }
+
+        let result = response.get("result")
+            .ok_or("Invalid response: missing result")?;
+
+        let contents_array = result.get("contents")
+            .and_then(|c| c.as_array())
+            .ok_or("Invalid response: missing contents array")?;
+
+        let mut contents = Vec::new();
+        for content in contents_array {
+            let uri = content.get("uri")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            let mime_type = content.get("mimeType")
+                .and_then(|v| v.as_str())
+                .unwrap_or("text/html")
+                .to_string();
+
+            let text = content.get("text")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let blob = content.get("blob")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            contents.push(MCPResourceContent {
+                uri,
+                mime_type,
+                text,
+                blob,
+            });
+        }
+
+        Ok(MCPResourceResponse { contents })
+    }
+
+    /// Get tool by name from a specific server
+    pub async fn get_tool(&self, server_id: &str, tool_name: &str) -> Option<MCPTool> {
+        let status_map = self.server_status.read().await;
+        status_map.get(server_id)
+            .and_then(|status| {
+                status.tools.iter()
+                    .find(|t| t.name == tool_name)
+                    .cloned()
+            })
+    }
+
+    /// Get all tools that have MCP Apps UI support
+    pub async fn get_app_tools(&self) -> Vec<MCPTool> {
+        let status_map = self.server_status.read().await;
+        let mut tools = Vec::new();
+
+        for status in status_map.values() {
+            if matches!(status.status, ConnectionStatus::Connected) {
+                for tool in &status.tools {
+                    if tool.meta.as_ref().and_then(|m| m.ui.as_ref()).is_some() {
+                        tools.push(tool.clone());
+                    }
+                }
+            }
+        }
+
+        tools
     }
 
 

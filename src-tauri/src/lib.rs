@@ -80,6 +80,10 @@ pub fn run() {
             commands::save_data_panel,
             commands::delete_data_panel,
             commands::list_data_panels,
+            // MCP Apps commands
+            commands::fetch_mcp_app_resource,
+            commands::get_mcp_app_tools,
+            commands::create_mcp_app_instance,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]
