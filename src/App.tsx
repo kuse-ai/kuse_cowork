@@ -12,6 +12,7 @@ import TracePanel from "./components/TracePanel";
 import BrowserPanel from "./components/BrowserPanel";
 import WorkStreamPanel from "./components/WorkStreamPanel";
 import DocEditor from "./components/DocEditor";
+import ChatWidget from "./components/ChatWidget";
 import DataPanelsDock from "./components/DataPanels/DataPanelsDock";
 import ResizablePanels from "./components/ResizablePanels";
 import { showDataPanels, setShowDataPanels, loadPanelState } from "./stores/dataPanels";
@@ -464,42 +465,60 @@ const App: Component = () => {
             </main>
           }
           right={
-            <aside class="task-panel-container">
-              <Show
-                when={showBrowserPanel()}
-                fallback={
-                  <Show
-                    when={showActivityPanel()}
-                    fallback={
-                      <Show
-                        when={showTracePanel()}
-                        fallback={
-                          <TaskPanel
-                            task={activeTask()}
-                            isRunning={isRunning()}
-                            toolExecutions={toolExecutions()}
+            <aside class="task-panel-container" style={{ display: "flex", "flex-direction": "column" }}>
+              <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+                <Show
+                  when={showBrowserPanel()}
+                  fallback={
+                    <Show
+                      when={showActivityPanel()}
+                      fallback={
+                        <Show
+                          when={showTracePanel()}
+                          fallback={
+                            <TaskPanel
+                              task={activeTask()}
+                              isRunning={isRunning()}
+                              toolExecutions={toolExecutions()}
+                            />
+                          }
+                        >
+                          <TracePanel
+                            docId={activeDocId() || activeTask()?.id || null}
+                            onClose={() => setShowTracePanel(false)}
                           />
-                        }
-                      >
-                        <TracePanel
-                          docId={activeDocId() || activeTask()?.id || null}
-                          onClose={() => setShowTracePanel(false)}
-                        />
-                      </Show>
-                    }
-                  >
-                    <WorkStreamPanel
-                      contextId={activeDocId() || activeTask()?.id || undefined}
-                      contextType={activeDocId() ? "document" : activeTask() ? "task" : undefined}
-                      onClose={() => setShowActivityPanel(false)}
-                    />
-                  </Show>
-                }
-              >
-                <BrowserPanel
-                  docId={activeDocId() || activeTask()?.id || null}
-                  onClose={() => setShowBrowserPanel(false)}
-                />
+                        </Show>
+                      }
+                    >
+                      <WorkStreamPanel
+                        contextId={activeDocId() || activeTask()?.id || undefined}
+                        contextType={activeDocId() ? "document" : activeTask() ? "task" : undefined}
+                        onClose={() => setShowActivityPanel(false)}
+                      />
+                    </Show>
+                  }
+                >
+                  <BrowserPanel
+                    docId={activeDocId() || activeTask()?.id || null}
+                    onClose={() => setShowBrowserPanel(false)}
+                  />
+                </Show>
+              </div>
+              <Show when={showDocEditor() || showDataPanels()}>
+                <div style={{ height: "400px", "flex-shrink": 0 }}>
+                  <ChatWidget
+                    messages={taskMessages()}
+                    isRunning={isRunning()}
+                    onSendMessage={(msg) => {
+                      if (activeTask()) {
+                        handleContinueTask(msg);
+                      } else {
+                        const title = msg.split("\n")[0].slice(0, 30) + "...";
+                        handleNewTask(title, msg);
+                      }
+                    }}
+                  />
+                </div>
               </Show>
             </aside>
           }

@@ -1227,7 +1227,12 @@ export async function getActivityTimeline(query: TimelineQuery): Promise<Timelin
       total_count: limited.length,
     };
   }
-  return invoke<Timeline>("get_activity_timeline", { query });
+  // Ensure required fields are present for Rust serde
+  const safeQuery = {
+    ...query,
+    include_events: query.include_events ?? false
+  };
+  return invoke<Timeline>("get_activity_timeline", { query: safeQuery });
 }
 
 /**

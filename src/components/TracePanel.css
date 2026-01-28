@@ -2,24 +2,28 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--bg-secondary, #1a1a1a);
-  border-left: 1px solid var(--border-color, #333);
+  background: var(--background);
+  border-left: 1px solid var(--border);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
 }
 
 .trace-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color, #333);
-  background: var(--bg-tertiary, #222);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+  height: 52px;
 }
 
 .trace-panel-header h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary, #fff);
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--foreground);
 }
 
 .trace-header-actions {
@@ -32,59 +36,62 @@
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid var(--border-color, #444);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: var(--bg-secondary, #1a1a1a);
-  color: var(--text-secondary, #888);
+  background: var(--card);
+  color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .trace-toggle-btn.active {
-  background: var(--accent-color, #4a9eff);
-  border-color: var(--accent-color, #4a9eff);
-  color: white;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .trace-toggle-btn:hover {
-  background: var(--bg-hover, #333);
+  background: var(--accent);
+  color: var(--foreground);
 }
 
 .trace-toggle-btn.active:hover {
-  background: var(--accent-hover, #3a8eef);
+  opacity: 0.9;
 }
 
 .trace-clear-btn,
 .trace-close-btn {
   padding: 4px 8px;
   font-size: 12px;
-  border: 1px solid var(--border-color, #444);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background: transparent;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .trace-clear-btn:hover,
 .trace-close-btn:hover {
-  background: var(--bg-hover, #333);
-  color: var(--text-primary, #fff);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--destructive);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* Suggestions Section */
 .suggestions-section {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color, #333);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
 }
 
 .suggestions-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -96,43 +103,47 @@
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
-  border: 1px solid var(--accent-color, #4a9eff);
+  border: 1px solid var(--primary);
   border-radius: 4px;
   background: transparent;
-  color: var(--accent-color, #4a9eff);
+  color: var(--primary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .generate-suggestions-btn:hover:not(:disabled) {
-  background: var(--accent-color, #4a9eff);
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .generate-suggestions-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  border-color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .suggestions-empty {
   text-align: center;
   padding: 16px;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
 .suggestions-empty .hint {
   font-size: 12px;
-  color: var(--text-tertiary, #666);
+  color: var(--muted-foreground);
+  opacity: 0.7;
   margin-top: 4px;
 }
 
 .suggestion-card {
-  background: var(--bg-tertiary, #222);
-  border: 1px solid var(--border-color, #444);
-  border-radius: 8px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   padding: 12px;
   margin-bottom: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .suggestion-content {
@@ -142,8 +153,8 @@
 }
 
 .suggestion-icon {
-  font-size: 18px;
-  color: var(--accent-color, #4a9eff);
+  font-size: 16px;
+  color: var(--primary);
 }
 
 .suggestion-text {
@@ -153,14 +164,14 @@
 
 .suggestion-title {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary, #fff);
+  font-weight: 600;
+  color: var(--foreground);
   margin-bottom: 4px;
 }
 
 .suggestion-desc {
   font-size: 12px;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   line-height: 1.4;
 }
 
@@ -177,27 +188,28 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-weight: 500;
 }
 
 .suggestion-approve-btn {
-  background: var(--accent-color, #4a9eff);
+  background: var(--primary);
   border: none;
-  color: white;
+  color: var(--primary-foreground);
 }
 
 .suggestion-approve-btn:hover {
-  background: var(--accent-hover, #3a8eef);
+  opacity: 0.9;
 }
 
 .suggestion-dismiss-btn {
   background: transparent;
-  border: 1px solid var(--border-color, #444);
-  color: var(--text-secondary, #888);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
 }
 
 .suggestion-dismiss-btn:hover {
-  background: var(--bg-hover, #333);
-  color: var(--text-primary, #fff);
+  background: var(--accent);
+  color: var(--foreground);
 }
 
 /* Traces Section */
@@ -205,6 +217,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 12px 16px;
+  background: var(--background);
 }
 
 .traces-loading,
@@ -214,13 +227,13 @@
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
 .traces-empty .hint {
   font-size: 12px;
-  color: var(--text-tertiary, #666);
+  opacity: 0.7;
   margin-top: 4px;
 }
 
@@ -236,39 +249,41 @@
   align-items: flex-start;
   gap: 10px;
   padding: 8px 10px;
-  background: var(--bg-tertiary, #222);
+  background: var(--card);
   border-radius: 6px;
-  border-left: 3px solid var(--border-color, #444);
-  transition: background 0.15s ease;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  transition: all 0.15s ease;
 }
 
 .trace-chip:hover {
-  background: var(--bg-hover, #2a2a2a);
+  background: var(--accent);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
-/* Event type colors */
+/* Event type colors - using more muted/standard colors */
 .trace-chip.edit {
-  border-left-color: #4ade80;
+  border-left-color: #10b981; /* emerald-500 */
 }
 
 .trace-chip.browse {
-  border-left-color: #60a5fa;
+  border-left-color: #3b82f6; /* blue-500 */
 }
 
 .trace-chip.search {
-  border-left-color: #fbbf24;
+  border-left-color: #f59e0b; /* amber-500 */
 }
 
 .trace-chip.tool_start {
-  border-left-color: #a78bfa;
+  border-left-color: #8b5cf6; /* violet-500 */
 }
 
 .trace-chip.tool_end {
-  border-left-color: #22d3ee;
+  border-left-color: #06b6d4; /* cyan-500 */
 }
 
 .trace-chip.approval {
-  border-left-color: #f472b6;
+  border-left-color: #ec4899; /* pink-500 */
 }
 
 .trace-chip-icon {
@@ -278,9 +293,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-secondary, #1a1a1a);
+  background: var(--muted);
   border-radius: 4px;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   flex-shrink: 0;
 }
 
@@ -294,7 +309,8 @@
 
 .trace-chip-label {
   font-size: 12px;
-  color: var(--text-primary, #fff);
+  color: var(--foreground);
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -302,7 +318,7 @@
 
 .trace-chip-time {
   font-size: 11px;
-  color: var(--text-tertiary, #666);
+  color: var(--muted-foreground);
 }
 
 .load-more-btn {
@@ -311,14 +327,14 @@
   margin-top: 12px;
   font-size: 12px;
   background: transparent;
-  border: 1px solid var(--border-color, #444);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text-secondary, #888);
+  color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .load-more-btn:hover {
-  background: var(--bg-hover, #333);
-  color: var(--text-primary, #fff);
+  background: var(--accent);
+  color: var(--foreground);
 }

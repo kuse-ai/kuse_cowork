@@ -15,6 +15,49 @@ interface BrowserPanelProps {
   onClose?: () => void;
 }
 
+const Icons = {
+  Refresh: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+      <path d="M16 21h5v-5" />
+    </svg>
+  ),
+  ExternalLink: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  ),
+  Close: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
+  ArrowRight: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  ),
+  Search: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  Globe: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  )
+};
+
 const BrowserPanel: Component<BrowserPanelProps> = (props) => {
   const [inputUrl, setInputUrl] = createSignal("https://www.google.com");
   const [currentUrl, setCurrentUrl] = createSignal("");
@@ -304,35 +347,45 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
             disabled={!currentUrl() || isLoading()}
             title="Refresh"
           >
-            {isLoading() ? "..." : "R"}
+            <Icons.Refresh />
           </button>
         </div>
         <div class="browser-url-bar">
-          <input
-            type="text"
-            value={inputUrl()}
-            onInput={(e) => setInputUrl(e.currentTarget.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Enter URL..."
-          />
+          <div class="browser-input-wrapper">
+            <span class="browser-input-icon">
+              {currentUrl() ? <Icons.Globe /> : <Icons.Search />}
+            </span>
+            <input
+              type="text"
+              value={inputUrl()}
+              onInput={(e) => setInputUrl(e.currentTarget.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Search or enter website name..."
+            />
+          </div>
           <button
             class="browser-go-btn"
             onClick={handleNavigate}
             disabled={isLoading()}
+            title="Go"
           >
-            Go
+            <Icons.ArrowRight />
           </button>
         </div>
         <div class="browser-actions">
           <button
-            class="browser-external-btn"
+            class="browser-action-btn"
             onClick={handleOpenExternal}
             title="Open in separate window"
           >
-            [^]
+            <Icons.ExternalLink />
           </button>
-          <button class="browser-close-btn" onClick={handleClose}>
-            x
+          <button 
+            class="browser-action-btn close" 
+            onClick={handleClose}
+            title="Close browser panel"
+          >
+            <Icons.Close />
           </button>
         </div>
       </div>

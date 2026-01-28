@@ -140,7 +140,7 @@ const DocEditor: Component<DocEditorProps> = (props) => {
     // 3. We haven't loaded this doc yet
     if (ed && doc && targetDocId && doc.id === targetDocId && loadedId !== doc.id) {
       setCurrentLoadedDocId(doc.id);
-      ed.commands.setContent(doc.content || "", false);
+      ed.commands.setContent(doc.content || "", { emitUpdate: false });
       // Initialize content length for delta tracking
       lastContentLength = doc.content?.length || 0;
     }
@@ -223,6 +223,13 @@ const DocEditor: Component<DocEditorProps> = (props) => {
       const newDoc = await createDocument({ title, content });
       if (newDoc) {
         setActiveDoc(newDoc);
+        // Directly set editor content since props.docId won't match yet
+        const ed = editor();
+        if (ed) {
+          ed.commands.setContent(content || "", { emitUpdate: false });
+          setCurrentLoadedDocId(newDoc.id);
+          lastContentLength = content?.length || 0;
+        }
         // Load traces for the new document
         loadTraces(newDoc.id, 100);
         // Log import trace
