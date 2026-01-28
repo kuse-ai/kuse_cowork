@@ -8,7 +8,7 @@ import SkillsList from "./components/SkillsList";
 import MCPSettings from "./components/MCPSettings";
 import TaskSidebar from "./components/TaskSidebar";
 import TaskPanel from "./components/TaskPanel";
-import TracePanel from "./components/TracePanel";
+import CapturePanel from "./components/CapturePanel";
 import BrowserPanel from "./components/BrowserPanel";
 import WorkStreamPanel from "./components/WorkStreamPanel";
 import DocEditor from "./components/DocEditor";
@@ -16,9 +16,9 @@ import ChatWidget from "./components/ChatWidget";
 import DataPanelsDock from "./components/DataPanels/DataPanelsDock";
 import ResizablePanels from "./components/ResizablePanels";
 import { showDataPanels, setShowDataPanels, loadPanelState } from "./stores/dataPanels";
-import { useTraces } from "./stores/traces";
 import { useDocs } from "./stores/docs";
 import { createToolTracker } from "./stores/workstream";
+import { captureAIExchange } from "./lib/capture-api";
 
 interface ToolExecution {
   id: number;
@@ -32,14 +32,11 @@ const App: Component = () => {
   // UI state
   const [showSkills, setShowSkills] = createSignal(false);
   const [showMCP, setShowMCP] = createSignal(false);
-  const [showTracePanel, setShowTracePanel] = createSignal(false);
+  const [showCapturePanel, setShowCapturePanel] = createSignal(false);
   const [showBrowserPanel, setShowBrowserPanel] = createSignal(false);
   const [showActivityPanel, setShowActivityPanel] = createSignal(false);
   const [showDocEditor, setShowDocEditor] = createSignal(false);
   const [activeDocId, setActiveDocId] = createSignal<string | null>(null);
-
-  // Trace hooks
-  const { logTrace } = useTraces();
 
   // WorkStream tool tracking
   const { trackToolStart, trackToolEnd } = createToolTracker();
@@ -111,9 +108,9 @@ const App: Component = () => {
     }
   };
 
-  const toggleTracePanel = () => {
-    setShowTracePanel(!showTracePanel());
-    if (showTracePanel()) {
+  const toggleCapturePanel = () => {
+    setShowCapturePanel(!showCapturePanel());
+    if (showCapturePanel()) {
       setShowBrowserPanel(false);
     }
   };
@@ -121,7 +118,7 @@ const App: Component = () => {
   const toggleBrowserPanel = () => {
     setShowBrowserPanel(!showBrowserPanel());
     if (showBrowserPanel()) {
-      setShowTracePanel(false);
+      setShowCapturePanel(false);
       setShowActivityPanel(false);
     }
   };
@@ -129,7 +126,7 @@ const App: Component = () => {
   const toggleActivityPanel = () => {
     setShowActivityPanel(!showActivityPanel());
     if (showActivityPanel()) {
-      setShowTracePanel(false);
+      setShowCapturePanel(false);
       setShowBrowserPanel(false);
     }
   };
@@ -259,15 +256,6 @@ const App: Component = () => {
           ...prev,
           { id: Date.now(), tool: event.tool, status: "running" },
         ]);
-        // Log trace for tool start
-        if (activeTask()) {
-          logTrace({
-            task_id: activeTask()?.id,
-            doc_id: activeTask()?.id || "default",
-            event_type: "tool_start",
-            payload: { tool: event.tool, input: event.input },
-          });
-        }
         // Log activity event for tool start
         trackToolStart(event.tool, event.input);
         break;
@@ -280,15 +268,6 @@ const App: Component = () => {
           }
           return updated;
         });
-        // Log trace for tool end
-        if (activeTask()) {
-          logTrace({
-            task_id: activeTask()?.id,
-            doc_id: activeTask()?.id || "default",
-            event_type: "tool_end",
-            payload: { tool: event.tool, success: event.success, result: event.result?.slice(0, 200) },
-          });
-        }
         // Log activity event for tool end
         trackToolEnd(event.tool, event.result?.slice(0, 100), event.success);
         break;
@@ -297,6 +276,23 @@ const App: Component = () => {
           if (!prev) return prev;
           return { ...prev, status: "completed" };
         });
+        // Capture AI exchange for source linking
+        {
+          const msgs = taskMessages();
+          const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
+          const aiResponse = currentText();
+          if (lastUserMsg && aiResponse) {
+            // Get model from settings (default to claude)
+            const settings = useSettings();
+            const model = settings.settings()?.model || "claude";
+            captureAIExchange(
+              lastUserMsg.content,
+              aiResponse,
+              model,
+              activeDocId() || undefined
+            ).catch(console.error);
+          }
+        }
         break;
       case "error":
         setActiveTask((prev) => {
@@ -409,13 +405,13 @@ const App: Component = () => {
           onSkillsClick={toggleSkills}
           onMCPClick={toggleMCP}
           onDataClick={toggleDataPanels}
-          onTraceClick={toggleTracePanel}
+          onCaptureClick={toggleCapturePanel}
           onBrowserClick={toggleBrowserPanel}
           onActivityClick={toggleActivityPanel}
           onDocClick={toggleDocEditor}
           onSelectDoc={handleSelectDoc}
           showDataPanels={showDataPanels()}
-          showTracePanel={showTracePanel()}
+          showCapturePanel={showCapturePanel()}
           showBrowserPanel={showBrowserPanel()}
           showActivityPanel={showActivityPanel()}
           showDocEditor={showDocEditor()}
@@ -474,7 +470,7 @@ const App: Component = () => {
                       when={showActivityPanel()}
                       fallback={
                         <Show
-                          when={showTracePanel()}
+                          when={showCapturePanel()}
                           fallback={
                             <TaskPanel
                               task={activeTask()}
@@ -483,9 +479,9 @@ const App: Component = () => {
                             />
                           }
                         >
-                          <TracePanel
+                          <CapturePanel
                             docId={activeDocId() || activeTask()?.id || null}
-                            onClose={() => setShowTracePanel(false)}
+                            onClose={() => setShowCapturePanel(false)}
                           />
                         </Show>
                       }

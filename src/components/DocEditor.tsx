@@ -4,8 +4,9 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import { useDocs, Document } from "../stores/docs";
-import { useTraces } from "../stores/traces";
 import { createDocumentTracker } from "../stores/workstream";
+import { createSourceLinker } from "../stores/capture";
+import { captureDocEdit } from "../lib/capture-api";
 import { exportToDocx, importFromDocx } from "../lib/docx-utils";
 import "./DocEditor.css";
 
@@ -30,13 +31,14 @@ const DocEditor: Component<DocEditorProps> = (props) => {
     setActiveDoc,
   } = useDocs();
 
-  const { logTrace, loadTraces } = useTraces();
-
   // WorkStream activity tracking
   const { trackEdit, trackFocus, trackBlur, trackSave } = createDocumentTracker(
     () => activeDoc()?.id || null,
     () => activeDoc()?.title || null
   );
+
+  // Source linking for capture system
+  const sourceLinker = createSourceLinker();
 
   const [isExporting, setIsExporting] = createSignal(false);
   const [isImporting, setIsImporting] = createSignal(false);
@@ -44,38 +46,75 @@ const DocEditor: Component<DocEditorProps> = (props) => {
   let editorContainer: HTMLDivElement | undefined;
   let fileInputRef: HTMLInputElement | undefined;
   let lastContentLength = 0;
-  let editTraceTimeout: number | null = null;
+  let editDebounceTimeout: number | null = null;
   let isUpdatingFromEditor = false;
 
-  // Debounced trace logging for edits
-  const logEditTrace = (newLength: number, snippet?: string) => {
+  // Edit session tracking for capture
+  let editSessionStart: number | null = null;
+  let editSessionCharDelta = 0;
+  let editSessionPreview = "";
+  let editCaptureTimeout: number | null = null;
+  const EDIT_SESSION_TIMEOUT = 5000; // 5 seconds of inactivity ends a session
+
+  // Debounced edit tracking for activity system
+  const trackEditDebounced = (newLength: number, snippet?: string) => {
     const doc = activeDoc();
     if (!doc) return;
 
     // Clear existing timeout
-    if (editTraceTimeout) {
-      clearTimeout(editTraceTimeout);
+    if (editDebounceTimeout) {
+      clearTimeout(editDebounceTimeout);
     }
 
-    // Debounce trace logging (log after 1 second of inactivity)
-    editTraceTimeout = window.setTimeout(() => {
+    // Debounce (track after 1 second of inactivity)
+    editDebounceTimeout = window.setTimeout(() => {
       const delta = newLength - lastContentLength;
       lastContentLength = newLength;
-
-      // Log to trace system
-      logTrace({
-        doc_id: doc.id,
-        event_type: "edit",
-        delta,
-        payload: {
-          action: delta > 0 ? "insert" : delta < 0 ? "delete" : "modify",
-          chars_changed: Math.abs(delta),
-        },
-      });
-
-      // Log to activity system
       trackEdit(delta, snippet);
     }, 1000);
+  };
+
+  // Capture edit session for provenance tracking
+  const captureEditSession = async () => {
+    const doc = activeDoc();
+    if (!doc || !editSessionStart || editSessionCharDelta === 0) return;
+
+    const now = Date.now();
+    await captureDocEdit(
+      doc.id,
+      doc.title || "Untitled",
+      editSessionPreview,
+      editSessionCharDelta,
+      editSessionStart,
+      now
+    );
+
+    // Reset session
+    editSessionStart = null;
+    editSessionCharDelta = 0;
+    editSessionPreview = "";
+  };
+
+  // Track edit for capture system (session-based)
+  const trackEditForCapture = (charDelta: number, preview: string) => {
+    // Start new session if needed
+    if (!editSessionStart) {
+      editSessionStart = Date.now();
+    }
+
+    // Accumulate changes
+    editSessionCharDelta += charDelta;
+    if (preview.length > editSessionPreview.length) {
+      editSessionPreview = preview.slice(0, 200);
+    }
+
+    // Reset the session timeout
+    if (editCaptureTimeout) {
+      clearTimeout(editCaptureTimeout);
+    }
+    editCaptureTimeout = window.setTimeout(() => {
+      captureEditSession();
+    }, EDIT_SESSION_TIMEOUT);
   };
 
   const editor = createTiptapEditor(() => ({
@@ -100,10 +139,15 @@ const DocEditor: Component<DocEditorProps> = (props) => {
     onUpdate: ({ editor }) => {
       isUpdatingFromEditor = true;
       const html = editor.getHTML();
+      const prevLength = lastContentLength;
       updateContent(html);
       // Log edit trace (debounced) with snippet
-      const text = editor.getText().slice(0, 100);
-      logEditTrace(html.length, text);
+      const text = editor.getText();
+      const snippet = text.slice(0, 100);
+      trackEditDebounced(html.length, snippet);
+      // Track for capture system
+      const charDelta = html.length - prevLength;
+      trackEditForCapture(charDelta, text.slice(-200)); // Last 200 chars as preview
       isUpdatingFromEditor = false;
     },
     onFocus: () => {
@@ -119,8 +163,6 @@ const DocEditor: Component<DocEditorProps> = (props) => {
     const docId = props.docId;
     if (docId) {
       openDocument(docId);
-      // Load traces for this document
-      loadTraces(docId, 100);
     } else {
       closeDocument();
       setCurrentLoadedDocId(null);
@@ -162,23 +204,32 @@ const DocEditor: Component<DocEditorProps> = (props) => {
   onCleanup(() => {
     document.removeEventListener("keydown", handleKeyDown);
     // Clean up debounce timeout
-    if (editTraceTimeout) {
-      clearTimeout(editTraceTimeout);
+    if (editDebounceTimeout) {
+      clearTimeout(editDebounceTimeout);
     }
+    // Capture any pending edit session
+    if (editCaptureTimeout) {
+      clearTimeout(editCaptureTimeout);
+    }
+    captureEditSession();
   });
 
   const handleSave = async () => {
     if (!isDirty()) return;
     const doc = activeDoc();
+    const ed = editor();
     await saveDocument();
     if (doc) {
-      logTrace({
-        doc_id: doc.id,
-        event_type: "edit",
-        payload: { action: "save", title: doc.title },
-      });
       // Log to activity system
       trackSave();
+
+      // Create source link (connects saved content to active sources)
+      if (ed) {
+        const content = ed.getText();
+        if (content.trim().length > 0) {
+          sourceLinker.onSave(doc.id, content).catch(console.error);
+        }
+      }
     }
   };
 
@@ -194,11 +245,6 @@ const DocEditor: Component<DocEditorProps> = (props) => {
     setIsExporting(true);
     try {
       await exportToDocx(doc.title, doc.content);
-      logTrace({
-        doc_id: doc.id,
-        event_type: "edit",
-        payload: { action: "export", format: "docx", title: doc.title },
-      });
     } catch (err) {
       console.error("Export failed:", err);
     } finally {
@@ -230,14 +276,6 @@ const DocEditor: Component<DocEditorProps> = (props) => {
           setCurrentLoadedDocId(newDoc.id);
           lastContentLength = content?.length || 0;
         }
-        // Load traces for the new document
-        loadTraces(newDoc.id, 100);
-        // Log import trace
-        logTrace({
-          doc_id: newDoc.id,
-          event_type: "edit",
-          payload: { action: "import", format: "docx", filename: file.name, title },
-        });
       }
     } catch (err) {
       console.error("Import failed:", err);

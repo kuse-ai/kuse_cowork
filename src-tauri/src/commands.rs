@@ -1,4 +1,11 @@
 use crate::agent::{AgentConfig, AgentContent, AgentEvent, AgentLoop, AgentMessage};
+use crate::capture::{
+    CaptureBuffer, ActiveSourceTracker, SourceLinker, ClipboardMonitor,
+    BrowseCapture, SearchCapture, AIExchangeCapture, ClipboardCapture, DocEditCapture,
+    PageContextInput, PageContextUpdate, SearchInput, AIExchangeInput,
+    CreateSourceLinkInput, SourceLinkWithSources, CaptureConfig, BatchInsertResult,
+    SourceType, hash_content, generate_preview, PREVIEW_LENGTH, ANSWER_PREVIEW_LENGTH,
+};
 use crate::claude::{ClaudeClient, Message as ClaudeMessage};
 use crate::database::{Conversation, DataPanel, Database, Message, PlanStep, Settings, Task, TaskMessage};
 use crate::docs::{Document, CreateDocumentInput, UpdateDocumentInput};
@@ -11,7 +18,7 @@ use crate::mcp::{MCPManager, MCPServerConfig, MCPServerStatus, MCPToolCall, MCPT
 use crate::skills::{SkillMetadata, get_available_skills};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{command, Emitter, State, Window};
+use tauri::{command, Emitter, Manager, State, Window};
 use tokio::sync::Mutex;
 
 pub struct AppState {
@@ -19,6 +26,9 @@ pub struct AppState {
     pub claude_client: Mutex<Option<ClaudeClient>>,
     pub mcp_manager: Arc<MCPManager>,
     pub excel_watcher: Mutex<Option<ExcelWatcher>>,
+    pub capture_buffer: Arc<CaptureBuffer>,
+    pub source_tracker: Arc<ActiveSourceTracker>,
+    pub clipboard_monitor: Arc<ClipboardMonitor>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2562,4 +2572,388 @@ pub async fn ws_cleanup(
     state: State<'_, Arc<AppState>>,
 ) -> Result<CleanupResult, CommandError> {
     state.db.cleanup_workstream().map_err(Into::into)
+}
+
+// ==================== Capture Commands ====================
+
+/// Report a page context (when user enters a page)
+#[command]
+pub async fn report_page_context(
+    state: State<'_, Arc<AppState>>,
+    url: String,
+    title: Option<String>,
+    entered_at: i64,
+) -> Result<String, CommandError> {
+    let id = uuid::Uuid::new_v4().to_string();
+
+    let capture = BrowseCapture {
+        id: id.clone(),
+        url,
+        page_title: title,
+        entered_at,
+        left_at: None,
+        scroll_depth_percent: None,
+    };
+
+    state.capture_buffer.push_browse(capture);
+
+    Ok(id)
+}
+
+/// Update page context when leaving
+#[command]
+pub async fn update_page_context(
+    state: State<'_, Arc<AppState>>,
+    browse_id: String,
+    left_at: i64,
+    scroll_depth_percent: Option<u8>,
+) -> Result<bool, CommandError> {
+    Ok(state.capture_buffer.update_browse(&browse_id, left_at, scroll_depth_percent))
+}
+
+/// Capture a search query
+#[command]
+pub async fn capture_search(
+    state: State<'_, Arc<AppState>>,
+    query: String,
+    search_engine: String,
+    timestamp: i64,
+) -> Result<String, CommandError> {
+    let id = uuid::Uuid::new_v4().to_string();
+
+    let capture = SearchCapture {
+        id: id.clone(),
+        query,
+        search_engine,
+        result_clicked: None,
+        timestamp,
+    };
+
+    state.capture_buffer.push_search(capture);
+
+    Ok(id)
+}
+
+/// Update search with clicked result
+#[command]
+pub async fn update_search_click(
+    state: State<'_, Arc<AppState>>,
+    search_id: String,
+    clicked_url: String,
+) -> Result<bool, CommandError> {
+    Ok(state.capture_buffer.update_search_click(&search_id, &clicked_url))
+}
+
+/// Capture an AI exchange (question + answer)
+#[command]
+pub async fn capture_ai_exchange(
+    state: State<'_, Arc<AppState>>,
+    question: String,
+    answer: String,
+    model: String,
+    context_doc_id: Option<String>,
+) -> Result<String, CommandError> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().timestamp_millis();
+
+    // Hash and preview for question and answer
+    let question_hash = hash_content(&question);
+    let answer_hash = hash_content(&answer);
+
+    let capture = AIExchangeCapture {
+        id: id.clone(),
+        question_hash: question_hash.clone(),
+        question_preview: generate_preview(&question, PREVIEW_LENGTH),
+        answer_hash: answer_hash.clone(),
+        answer_preview: generate_preview(&answer, ANSWER_PREVIEW_LENGTH),
+        model,
+        context_doc_id,
+        timestamp: now,
+    };
+
+    // Store full content for later retrieval
+    state.db.store_content(&question_hash, &question, "question")?;
+    state.db.store_content(&answer_hash, &answer, "answer")?;
+
+    state.capture_buffer.push_ai_exchange(capture);
+
+    // Also activate as a source
+    state.source_tracker.activate_source(
+        SourceType::AIExchange,
+        id.clone(),
+        Some(generate_preview(&question, 50)),
+    );
+
+    Ok(id)
+}
+
+/// Flush the capture buffer to database
+#[command]
+pub async fn flush_capture_buffer(
+    state: State<'_, Arc<AppState>>,
+) -> Result<BatchInsertResult, CommandError> {
+    let drain = state.capture_buffer.drain_all();
+
+    let clipboard_inserted = state.db.insert_clipboard_captures(&drain.clipboard)?;
+    let browse_inserted = state.db.insert_browse_captures(&drain.browse)?;
+    let search_inserted = state.db.insert_search_captures(&drain.search)?;
+    let ai_exchange_inserted = state.db.insert_ai_exchange_captures(&drain.ai_exchange)?;
+    let doc_edit_inserted = state.db.insert_doc_edit_captures(&drain.doc_edit)?;
+
+    Ok(BatchInsertResult {
+        clipboard_inserted,
+        browse_inserted,
+        search_inserted,
+        ai_exchange_inserted,
+        doc_edit_inserted,
+    })
+}
+
+/// Activate a source for tracking
+#[command]
+pub async fn activate_source(
+    state: State<'_, Arc<AppState>>,
+    source_type: String,
+    source_id: String,
+    title: Option<String>,
+) -> Result<(), CommandError> {
+    state.source_tracker.activate_source(
+        SourceType::from_str(&source_type),
+        source_id,
+        title,
+    );
+    Ok(())
+}
+
+/// Deactivate a source
+#[command]
+pub async fn deactivate_source(
+    state: State<'_, Arc<AppState>>,
+    source_id: String,
+) -> Result<(), CommandError> {
+    state.source_tracker.deactivate_source(&source_id);
+    Ok(())
+}
+
+/// Create a source link connecting document content to active sources
+#[command]
+pub async fn create_source_link(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+    section_path: Option<String>,
+    content: String,
+) -> Result<SourceLinkWithSources, CommandError> {
+    let linker = SourceLinker::new(
+        state.source_tracker.clone(),
+        state.db.clone(),
+    );
+
+    let input = CreateSourceLinkInput {
+        doc_id,
+        section_path,
+        content,
+    };
+
+    linker.create_source_link(&input).map_err(Into::into)
+}
+
+/// Get document provenance (source links for a document)
+#[command]
+pub async fn get_document_provenance(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+) -> Result<Vec<SourceLinkWithSources>, CommandError> {
+    state.db.get_document_source_links(&doc_id).map_err(Into::into)
+}
+
+/// Get capture configuration
+#[command]
+pub async fn get_capture_config(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CaptureConfig, CommandError> {
+    state.db.get_capture_config().map_err(Into::into)
+}
+
+/// Update capture configuration
+#[command]
+pub async fn update_capture_config(
+    state: State<'_, Arc<AppState>>,
+    config: CaptureConfig,
+) -> Result<(), CommandError> {
+    state.db.save_capture_config(&config).map_err(Into::into)
+}
+
+/// Get recent browse captures
+#[command]
+pub async fn get_recent_browse(
+    state: State<'_, Arc<AppState>>,
+    limit: i32,
+) -> Result<Vec<BrowseCapture>, CommandError> {
+    state.db.get_recent_browse(limit).map_err(Into::into)
+}
+
+/// Get recent search captures
+#[command]
+pub async fn get_recent_search(
+    state: State<'_, Arc<AppState>>,
+    limit: i32,
+) -> Result<Vec<SearchCapture>, CommandError> {
+    state.db.get_recent_search(limit).map_err(Into::into)
+}
+
+/// Get recent AI exchange captures
+#[command]
+pub async fn get_recent_ai_exchange(
+    state: State<'_, Arc<AppState>>,
+    limit: i32,
+) -> Result<Vec<AIExchangeCapture>, CommandError> {
+    state.db.get_recent_ai_exchange(limit).map_err(Into::into)
+}
+
+/// Start clipboard monitoring
+#[command]
+pub async fn start_clipboard_monitor(
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), CommandError> {
+    state.clipboard_monitor.start().await;
+    Ok(())
+}
+
+/// Stop clipboard monitoring
+#[command]
+pub async fn stop_clipboard_monitor(
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), CommandError> {
+    state.clipboard_monitor.stop();
+    Ok(())
+}
+
+/// Set the active clipboard source (called when user is viewing a page)
+#[command]
+pub async fn set_clipboard_source(
+    state: State<'_, Arc<AppState>>,
+    url: Option<String>,
+    title: Option<String>,
+) -> Result<(), CommandError> {
+    state.clipboard_monitor.set_active_source(url, title).await;
+    Ok(())
+}
+
+/// Get recent clipboard captures
+#[command]
+pub async fn get_recent_clipboard(
+    state: State<'_, Arc<AppState>>,
+    limit: i32,
+) -> Result<Vec<ClipboardCapture>, CommandError> {
+    state.db.get_recent_clipboard(limit).map_err(Into::into)
+}
+
+/// Capture a document edit session
+#[command]
+pub async fn capture_doc_edit(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+    doc_title: String,
+    edit_preview: String,
+    char_delta: i32,
+    started_at: i64,
+    ended_at: i64,
+) -> Result<String, CommandError> {
+    let id = uuid::Uuid::new_v4().to_string();
+
+    let capture = DocEditCapture {
+        id: id.clone(),
+        doc_id,
+        doc_title,
+        edit_preview,
+        char_delta,
+        started_at,
+        ended_at,
+    };
+
+    state.capture_buffer.push_doc_edit(capture);
+
+    Ok(id)
+}
+
+/// Get recent document edit captures
+#[command]
+pub async fn get_recent_doc_edit(
+    state: State<'_, Arc<AppState>>,
+    limit: i32,
+) -> Result<Vec<DocEditCapture>, CommandError> {
+    state.db.get_recent_doc_edit(limit).map_err(Into::into)
+}
+
+/// Export all captures to a JSON file, then clear
+#[command]
+pub async fn export_and_clear_captures(
+    state: State<'_, Arc<AppState>>,
+    app_handle: tauri::AppHandle,
+) -> Result<String, CommandError> {
+    use std::fs;
+    use std::io::Write;
+
+    // Flush buffer to database first
+    let drain = state.capture_buffer.drain_all();
+    state.db.insert_clipboard_captures(&drain.clipboard)?;
+    state.db.insert_browse_captures(&drain.browse)?;
+    state.db.insert_search_captures(&drain.search)?;
+    state.db.insert_ai_exchange_captures(&drain.ai_exchange)?;
+    state.db.insert_doc_edit_captures(&drain.doc_edit)?;
+
+    // Collect all captures
+    let browse = state.db.get_recent_browse(10000)?;
+    let search = state.db.get_recent_search(10000)?;
+    let ai = state.db.get_recent_ai_exchange(10000)?;
+    let clipboard = state.db.get_recent_clipboard(10000)?;
+    let doc_edit = state.db.get_recent_doc_edit(10000)?;
+
+    // Create export structure
+    let export_data = serde_json::json!({
+        "exported_at": chrono::Utc::now().to_rfc3339(),
+        "captures": {
+            "browse": browse,
+            "search": search,
+            "ai_exchange": ai,
+            "clipboard": clipboard,
+            "doc_edit": doc_edit,
+        },
+        "counts": {
+            "browse": browse.len(),
+            "search": search.len(),
+            "ai_exchange": ai.len(),
+            "clipboard": clipboard.len(),
+            "doc_edit": doc_edit.len(),
+        }
+    });
+
+    // Get app data directory
+    let app_data_dir = app_handle.path().app_data_dir()
+        .map_err(|e| CommandError { message: format!("Failed to get app data dir: {}", e) })?;
+
+    // Create exports subdirectory
+    let exports_dir = app_data_dir.join("capture_exports");
+    fs::create_dir_all(&exports_dir)
+        .map_err(|e| CommandError { message: format!("Failed to create exports dir: {}", e) })?;
+
+    // Generate filename with timestamp
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("captures_{}.json", timestamp);
+    let file_path = exports_dir.join(&filename);
+
+    // Write to file
+    let json_string = serde_json::to_string_pretty(&export_data)
+        .map_err(|e| CommandError { message: format!("Failed to serialize: {}", e) })?;
+
+    let mut file = fs::File::create(&file_path)
+        .map_err(|e| CommandError { message: format!("Failed to create file: {}", e) })?;
+    file.write_all(json_string.as_bytes())
+        .map_err(|e| CommandError { message: format!("Failed to write file: {}", e) })?;
+
+    // Now clear the database
+    state.capture_buffer.clear();
+    state.db.clear_all_captures()?;
+
+    Ok(file_path.to_string_lossy().to_string())
 }

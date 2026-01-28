@@ -12,13 +12,13 @@ interface TaskSidebarProps {
   onSkillsClick: () => void;
   onMCPClick: () => void;
   onDataClick: () => void;
-  onTraceClick: () => void;
+  onCaptureClick: () => void;
   onBrowserClick: () => void;
   onActivityClick: () => void;
   onDocClick: () => void;
   onSelectDoc: (doc: Document) => void;
   showDataPanels: boolean;
-  showTracePanel: boolean;
+  showCapturePanel: boolean;
   showBrowserPanel: boolean;
   showActivityPanel: boolean;
   showDocEditor: boolean;
@@ -234,11 +234,11 @@ const TaskSidebar: Component<TaskSidebarProps> = (props) => {
             <span class="nav-label">Activity</span>
           </button>
           <button
-            class={`nav-item ${props.showTracePanel ? "active" : ""}`}
-            onClick={props.onTraceClick}
+            class={`nav-item ${props.showCapturePanel ? "active" : ""}`}
+            onClick={props.onCaptureClick}
           >
             <span class="nav-icon"><SidebarIcons.Trace /></span>
-            <span class="nav-label">Trace</span>
+            <span class="nav-label">Capture</span>
           </button>
           <button
             class={`nav-item ${props.showBrowserPanel ? "active" : ""}`}

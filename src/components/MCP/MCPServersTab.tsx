@@ -137,15 +137,6 @@ const MCPServersTab: Component<MCPServersTabProps> = (props) => {
 
   return (
     <>
-      <div class="tab-header-actions">
-        <button class="example-btn" onClick={loadExampleServer}>
-          Load Example
-        </button>
-        <button class="add-btn" onClick={() => setShowAddForm(true)}>
-          Add Server
-        </button>
-      </div>
-
       <Show when={showAddForm()}>
         <div class="add-form">
           <h3>{editingServer() ? "Edit Server" : "Add MCP Server"}</h3>
@@ -211,7 +202,17 @@ const MCPServersTab: Component<MCPServersTabProps> = (props) => {
       </Show>
 
       <div class="servers-list">
-        <h3>MCP Servers</h3>
+        <div class="servers-header">
+          <h3>MCP Servers</h3>
+          <div class="header-actions">
+            <button class="example-btn" onClick={loadExampleServer}>
+              Load Example
+            </button>
+            <button class="add-btn" onClick={() => setShowAddForm(true)}>
+              Add Server
+            </button>
+          </div>
+        </div>
 
         {mergedData().length === 0 ? (
           <div class="empty-state">

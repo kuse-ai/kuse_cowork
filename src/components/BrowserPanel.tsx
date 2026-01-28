@@ -1,5 +1,6 @@
 import { Component, createSignal, onCleanup, onMount } from "solid-js";
-import { useTraces } from "../stores/traces";
+import { createPageTracker } from "../stores/capture";
+import { setClipboardSource } from "../lib/capture-api";
 import {
   createEmbeddedBrowser,
   updateEmbeddedBrowserBounds,
@@ -66,20 +67,22 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
   const [error, setError] = createSignal<string | null>(null);
   const [isCreatingBrowser, setIsCreatingBrowser] = createSignal(false);
 
-  const { logTrace } = useTraces();
+  const pageTracker = createPageTracker();
   let containerRef: HTMLDivElement | undefined;
   let resizeObserver: ResizeObserver | undefined;
   let resizeTimeout: number | undefined;
   let ticking = false;
 
-  // Log URL visit as browse trace
-  const logBrowseTrace = (navigatedUrl: string) => {
-    if (props.docId) {
-      logTrace({
-        doc_id: props.docId,
-        event_type: "browse",
-        payload: { url: navigatedUrl },
-      });
+  // Track page navigation for capture system
+  const trackNavigation = async (url: string, title?: string) => {
+    console.log("[BrowserPanel] Tracking navigation:", { url, title });
+    try {
+      await pageTracker.onNavigate(url, title ?? null);
+      // Also set as clipboard source so any copies are linked to this page
+      await setClipboardSource(url, title ?? null);
+      console.log("[BrowserPanel] Navigation tracked successfully");
+    } catch (e) {
+      console.error("[BrowserPanel] Failed to track navigation:", e);
     }
   };
 
@@ -235,7 +238,8 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
 
       setCurrentUrl(normalizedUrl);
       setInputUrl(normalizedUrl);
-      logBrowseTrace(normalizedUrl);
+      // Track for capture system (source linking)
+      await trackNavigation(normalizedUrl);
     } catch (e) {
       console.error("Failed to open embedded browser:", e);
       setError(e instanceof Error ? e.message : String(e));
@@ -279,6 +283,11 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
   };
 
   const handleClose = async () => {
+    // Close capture tracking
+    await pageTracker.onClose();
+    // Clear clipboard source
+    await setClipboardSource(null, null);
+
     if (browserActive()) {
       try {
         await closeEmbeddedBrowser();
@@ -318,7 +327,7 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
     if (containerRef) {
       containerRef.removeEventListener("transitionend", debouncedUpdateBounds);
     }
-    
+
     // Remove global listeners
     window.removeEventListener("resize", debouncedUpdateBounds);
     window.removeEventListener("scroll", debouncedUpdateBounds, true);
@@ -326,7 +335,10 @@ const BrowserPanel: Component<BrowserPanelProps> = (props) => {
     if (resizeTimeout) {
       clearTimeout(resizeTimeout);
     }
-    
+
+    // Close capture tracking
+    await pageTracker.onClose();
+
     // Close the embedded browser when panel unmounts
     if (browserActive()) {
       try {

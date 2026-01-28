@@ -1,4 +1,5 @@
 mod agent;
+mod capture;
 mod claude;
 mod commands;
 mod database;
@@ -11,6 +12,7 @@ mod tools;
 mod trace;
 mod workstream;
 
+use capture::{CaptureBuffer, ActiveSourceTracker, ClipboardMonitor, CaptureConfig};
 use commands::AppState;
 use mcp::MCPManager;
 use std::sync::Arc;
@@ -34,9 +36,23 @@ pub fn run() {
     // Initialize WorkStream tables (lean activity tracking)
     db.create_workstream_tables().expect("Failed to create WorkStream tables");
 
+    // Initialize Capture tables (rich capture & source linking)
+    db.create_capture_tables().expect("Failed to create Capture tables");
+
     // Initialize MCP manager
     let mcp_manager = Arc::new(MCPManager::new());
     let db_arc = Arc::new(db);
+
+    // Initialize Capture buffer and source tracker
+    let capture_buffer = Arc::new(CaptureBuffer::new());
+    let source_tracker = Arc::new(ActiveSourceTracker::new());
+
+    // Initialize clipboard monitor
+    let capture_config = db_arc.get_capture_config().unwrap_or_default();
+    let clipboard_monitor = Arc::new(ClipboardMonitor::new(
+        capture_buffer.clone(),
+        Arc::new(Mutex::new(capture_config)),
+    ));
 
     // Auto-connect enabled MCP servers will be done in the tauri app setup
 
@@ -45,6 +61,9 @@ pub fn run() {
         claude_client: Mutex::new(None),
         mcp_manager,
         excel_watcher: Mutex::new(None),
+        capture_buffer,
+        source_tracker,
+        clipboard_monitor,
     });
 
     tauri::Builder::default()
@@ -133,6 +152,29 @@ pub fn run() {
             commands::ws_create_milestone,
             commands::ws_list_milestones,
             commands::ws_cleanup,
+            // Capture commands (rich capture & source linking)
+            commands::report_page_context,
+            commands::update_page_context,
+            commands::capture_search,
+            commands::update_search_click,
+            commands::capture_ai_exchange,
+            commands::flush_capture_buffer,
+            commands::activate_source,
+            commands::deactivate_source,
+            commands::create_source_link,
+            commands::get_document_provenance,
+            commands::get_capture_config,
+            commands::update_capture_config,
+            commands::get_recent_browse,
+            commands::get_recent_search,
+            commands::get_recent_ai_exchange,
+            commands::start_clipboard_monitor,
+            commands::stop_clipboard_monitor,
+            commands::set_clipboard_source,
+            commands::get_recent_clipboard,
+            commands::capture_doc_edit,
+            commands::get_recent_doc_edit,
+            commands::export_and_clear_captures,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]
@@ -146,11 +188,13 @@ pub fn run() {
             let app_state = app.state::<Arc<AppState>>();
             let db = app_state.db.clone();
             let mcp_manager = app_state.mcp_manager.clone();
+            let clipboard_monitor = app_state.clipboard_monitor.clone();
             let _app_handle = app.handle().clone();
 
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(async move {
+                    // Auto-connect MCP servers
                     if let Ok(servers) = db.get_mcp_servers() {
                         for server in servers {
                             if server.enabled {
@@ -162,6 +206,10 @@ pub fn run() {
                             }
                         }
                     }
+
+                    // Start clipboard monitor
+                    clipboard_monitor.start().await;
+                    println!("Clipboard monitor started");
                 });
             });
 
