@@ -136,7 +136,7 @@ async fn docker_run(docker: &Docker, tool_use: &ToolUse, project_path: &Option<S
     let _ = pull_image_if_needed(docker, image).await;
 
     // Create container
-    let container_name = format!("kuse-cowork-{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap());
+    let container_name = format!("kuse_cowork-{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap());
 
     let host_config = HostConfig {
         binds: if binds.is_empty() { None } else { Some(binds) },

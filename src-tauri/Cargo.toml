@@ -1,10 +1,10 @@
 [package]
-name = "kuse-cowork"
+name = "kuse_cowork"
 version = "0.1.0"
 description = "Open-source Claude Cowork desktop app"
 authors = ["Kuse AI"]
 license = "MIT"
-repository = "https://github.com/kuse-ai/kuse-cowork"
+repository = "https://github.com/kuse-ai/kuse_cowork"
 edition = "2021"
 
 [lib]
