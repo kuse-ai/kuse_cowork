@@ -121,7 +121,7 @@ export function isTauri(): boolean {
 export async function getSettings(): Promise<Settings> {
   if (!isTauri()) {
     // Fallback for web dev
-    const stored = localStorage.getItem("kuse-cowork-settings");
+    const stored = localStorage.getItem("kuse_cowork-settings");
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -148,7 +148,7 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<void> {
   if (!isTauri()) {
     localStorage.setItem(
-      "kuse-cowork-settings",
+      "kuse_cowork-settings",
       JSON.stringify({
         apiKey: settings.api_key,
         model: settings.model,
@@ -191,7 +191,7 @@ export async function testConnection(): Promise<string> {
 // Conversations API
 export async function listConversations(): Promise<Conversation[]> {
   if (!isTauri()) {
-    const stored = localStorage.getItem("kuse-cowork-conversations");
+    const stored = localStorage.getItem("kuse_cowork-conversations");
     return stored ? JSON.parse(stored) : [];
   }
   return invoke<Conversation[]>("list_conversations");
@@ -207,7 +207,7 @@ export async function createConversation(title: string): Promise<Conversation> {
     };
     const conversations = await listConversations();
     conversations.unshift(conv);
-    localStorage.setItem("kuse-cowork-conversations", JSON.stringify(conversations));
+    localStorage.setItem("kuse_cowork-conversations", JSON.stringify(conversations));
     return conv;
   }
   return invoke<Conversation>("create_conversation", { title });
@@ -223,7 +223,7 @@ export async function updateConversationTitle(
     if (idx >= 0) {
       conversations[idx].title = title;
       conversations[idx].updated_at = Date.now();
-      localStorage.setItem("kuse-cowork-conversations", JSON.stringify(conversations));
+      localStorage.setItem("kuse_cowork-conversations", JSON.stringify(conversations));
     }
     return;
   }
@@ -234,8 +234,8 @@ export async function deleteConversation(id: string): Promise<void> {
   if (!isTauri()) {
     const conversations = await listConversations();
     const filtered = conversations.filter((c) => c.id !== id);
-    localStorage.setItem("kuse-cowork-conversations", JSON.stringify(filtered));
-    localStorage.removeItem(`kuse-cowork-messages-${id}`);
+    localStorage.setItem("kuse_cowork-conversations", JSON.stringify(filtered));
+    localStorage.removeItem(`kuse_cowork-messages-${id}`);
     return;
   }
   return invoke("delete_conversation", { id });
@@ -244,7 +244,7 @@ export async function deleteConversation(id: string): Promise<void> {
 // Messages API
 export async function getMessages(conversationId: string): Promise<Message[]> {
   if (!isTauri()) {
-    const stored = localStorage.getItem(`kuse-cowork-messages-${conversationId}`);
+    const stored = localStorage.getItem(`kuse_cowork-messages-${conversationId}`);
     return stored ? JSON.parse(stored) : [];
   }
   return invoke<Message[]>("get_messages", { conversationId });
@@ -252,7 +252,7 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
 function saveMessagesLocal(conversationId: string, messages: Message[]) {
   localStorage.setItem(
-    `kuse-cowork-messages-${conversationId}`,
+    `kuse_cowork-messages-${conversationId}`,
     JSON.stringify(messages)
   );
 }
@@ -394,7 +394,7 @@ export async function sendChatWithTools(
 // Task API
 export async function listTasks(): Promise<Task[]> {
   if (!isTauri()) {
-    const stored = localStorage.getItem("kuse-cowork-tasks");
+    const stored = localStorage.getItem("kuse_cowork-tasks");
     return stored ? JSON.parse(stored) : [];
   }
   return invoke<Task[]>("list_tasks");
@@ -427,7 +427,7 @@ export async function createTask(
     };
     const tasks = await listTasks();
     tasks.unshift(task);
-    localStorage.setItem("kuse-cowork-tasks", JSON.stringify(tasks));
+    localStorage.setItem("kuse_cowork-tasks", JSON.stringify(tasks));
     return task;
   }
   return invoke<Task>("create_task", { title, description, projectPath });
@@ -437,7 +437,7 @@ export async function deleteTask(id: string): Promise<void> {
   if (!isTauri()) {
     const tasks = await listTasks();
     const filtered = tasks.filter((t) => t.id !== id);
-    localStorage.setItem("kuse-cowork-tasks", JSON.stringify(filtered));
+    localStorage.setItem("kuse_cowork-tasks", JSON.stringify(filtered));
     return;
   }
   return invoke("delete_task", { id });
@@ -470,7 +470,7 @@ export async function runTaskAgent(
 export async function getTaskMessages(taskId: string): Promise<TaskMessage[]> {
   if (!isTauri()) {
     // Web fallback
-    const stored = localStorage.getItem(`kuse-cowork-task-messages-${taskId}`);
+    const stored = localStorage.getItem(`kuse_cowork-task-messages-${taskId}`);
     return stored ? JSON.parse(stored) : [];
   }
   return invoke<TaskMessage[]>("get_task_messages", { taskId });

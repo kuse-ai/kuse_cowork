@@ -159,7 +159,7 @@ After outputting the plan, immediately begin executing each step. As you work th
 
 ## Docker Integration
 The project_path (if provided) is automatically mounted to /workspace in containers.
-Skills directory (~/.kuse-cowork/skills) is automatically mounted to /skills (read-only).
+Skills directory (~/.kuse_cowork/skills) is automatically mounted to /skills (read-only).
 Default image: python:3.11-alpine. Also available: ubuntu:latest, node:20, rust:alpine
 
 ## Workflow
