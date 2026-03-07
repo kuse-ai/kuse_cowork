@@ -370,3 +370,54 @@
 .mcp-settings .delete-btn:hover {
   opacity: 0.9;
 }
+
+/* Custom Headers */
+.custom-headers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.header-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.remove-header-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--destructive);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--destructive);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.remove-header-btn:hover {
+  background: var(--destructive);
+  color: #fff;
+}
+
+.add-header-btn {
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.add-header-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
