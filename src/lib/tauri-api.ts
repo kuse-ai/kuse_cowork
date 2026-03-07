@@ -12,6 +12,7 @@ export interface Settings {
   provider_keys: Record<string, string>;  // Provider-specific API keys
   openai_organization?: string;  // Optional OpenAI Organization ID
   openai_project?: string;  // Optional OpenAI Project ID
+  theme: string;  // "light", "dark", or "system"
 }
 
 export interface Conversation {
@@ -131,6 +132,7 @@ export async function getSettings(): Promise<Settings> {
         max_tokens: parsed.maxTokens || 4096,
         temperature: parsed.temperature ?? 0.7,
         provider_keys: parsed.providerKeys || {},
+        theme: parsed.theme || "system",
       };
     }
     return {
@@ -140,6 +142,7 @@ export async function getSettings(): Promise<Settings> {
       max_tokens: 4096,
       temperature: 0.7,
       provider_keys: {},
+      theme: "system",
     };
   }
   return invoke<Settings>("get_settings");
@@ -156,6 +159,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
         maxTokens: settings.max_tokens,
         temperature: settings.temperature,
         providerKeys: settings.provider_keys,
+        theme: settings.theme,
       })
     );
     return;
@@ -178,6 +182,7 @@ export async function testConnection(): Promise<string> {
       maxTokens: settings.max_tokens,
       temperature: settings.temperature,
       providerKeys: settings.provider_keys || {},
+      theme: settings.theme || "system",
     };
 
     return testAIConnection(convertedSettings);
@@ -288,6 +293,7 @@ export async function sendChatMessage(
       maxTokens: settings.max_tokens,
       temperature: settings.temperature,
       providerKeys: settings.provider_keys || {},
+      theme: settings.theme || "system",
     };
 
     const fullText = await sendAIMessage(messages, convertedSettings, onStream);

@@ -36,6 +36,13 @@ pub struct Settings {
     /// Optional OpenAI Project ID
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub openai_project: Option<String>,
+    /// Theme preference: "light", "dark", or "system"
+    #[serde(default = "default_theme")]
+    pub theme: String,
+}
+
+fn default_theme() -> String {
+    "system".to_string()
 }
 
 impl Default for Settings {
@@ -50,6 +57,7 @@ impl Default for Settings {
             provider_keys: HashMap::new(),
             openai_organization: None,
             openai_project: None,
+            theme: "system".to_string(),
         }
     }
 }
@@ -283,6 +291,7 @@ impl Database {
                         settings.provider_keys = keys;
                     }
                 }
+                "theme" => settings.theme = value,
                 _ => {}
             }
         }
@@ -324,6 +333,7 @@ impl Database {
             ("temperature", settings.temperature.to_string()),
             ("provider", provider),
             ("provider_keys", provider_keys_json),
+            ("theme", settings.theme.clone()),
         ];
 
         for (key, value) in pairs {

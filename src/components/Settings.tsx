@@ -1,5 +1,5 @@
 import { Component, createSignal, createMemo, Show } from "solid-js";
-import { useSettings, AVAILABLE_MODELS, PROVIDER_PRESETS, getProviderFromModel } from "../stores/settings";
+import { useSettings, AVAILABLE_MODELS, PROVIDER_PRESETS, getProviderFromModel, applyTheme } from "../stores/settings";
 import { testConnection } from "../lib/tauri-api";
 import ModelSelector from "./ModelSelector";
 import "./Settings.css";
@@ -225,6 +225,26 @@ const Settings: Component = () => {
             {testResult() && testResult() !== "success" && (
               <span class="test-error">{testResult()}</span>
             )}
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Style</h3>
+          <div class="form-group">
+            <label>Theme</label>
+            <div class="theme-selector">
+              {(["light", "dark", "system"] as const).map((option) => (
+                <button
+                  class={`theme-option ${settings().theme === option ? "active" : ""}`}
+                  onClick={() => {
+                    updateSetting("theme", option);
+                    applyTheme(option);
+                  }}
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
