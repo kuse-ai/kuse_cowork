@@ -63,8 +63,8 @@
   --foreground: rgba(255, 255, 225, 1);
   --card: rgba(32, 26, 26, 1);
   --card-foreground: rgba(255, 255, 225, 1);
-  --primary: rgba(255, 255, 255, 1);
-  --primary-foreground: rgba(106, 64, 64, 1);
+  --primary: rgba(106, 64, 64, 1);
+  --primary-foreground: rgba(255, 255, 255, 1);
   --secondary: rgba(101, 78, 78, 1);
   --secondary-foreground: rgba(255, 255, 225, 0.8);
   --muted: rgba(38, 30, 30, 1);

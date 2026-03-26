@@ -14,6 +14,7 @@ impl MCPServerConfig {
             server_url,
             oauth_client_id: None,
             oauth_client_secret: None,
+            custom_headers: None,
             enabled: false,
             created_at: now.clone(),
             updated_at: now,

@@ -6,6 +6,7 @@ export interface MCPServerConfig {
   server_url: string;
   oauth_client_id?: string;
   oauth_client_secret?: string;
+  custom_headers?: Record<string, string>;
   enabled: boolean;
   created_at: string;
   updated_at: string;
