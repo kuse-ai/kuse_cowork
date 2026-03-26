@@ -65,6 +65,7 @@ pub fn run() {
             commands::disconnect_mcp_server,
             commands::get_mcp_server_statuses,
             commands::execute_mcp_tool,
+            commands::discover_models,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]
