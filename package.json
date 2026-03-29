@@ -1,5 +1,5 @@
 {
-  "name": "kuse-cowork",
+  "name": "kuse_cowork",
   "version": "0.1.0",
   "description": "Open-source Claude Cowork desktop app with custom API key and model selection",
   "type": "module",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kuse-ai/kuse-cowork"
+    "url": "https://github.com/kuse-ai/kuse_cowork"
   },
   "license": "MIT",
   "keywords": [

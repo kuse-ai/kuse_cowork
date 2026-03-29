@@ -126,8 +126,8 @@ Will update to a clean release build soon.
 
 ```bash
 # Clone the repo
-git clone https://github.com/kuse-ai/kuse-cowork.git
-cd kuse-cowork
+git clone https://github.com/kuse-ai/kuse_cowork.git
+cd kuse_cowork
 
 # Install dependencies
 npm install
@@ -142,7 +142,7 @@ npm run tauri build
 ### Project Structure
 
 ```
-kuse-cowork/
+kuse_cowork/
 ├── src/                    # Frontend (SolidJS + TypeScript)
 │   ├── components/         # UI components
 │   ├── lib/               # Utilities (API clients, MCP)

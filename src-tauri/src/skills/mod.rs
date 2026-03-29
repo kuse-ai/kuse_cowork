@@ -13,7 +13,7 @@ pub fn get_skills_directory() -> PathBuf {
     let app_data = dirs::data_dir()
         .expect("Could not determine app data directory");
 
-    app_data.join("kuse-cowork").join("skills")
+    app_data.join("kuse_cowork").join("skills")
 }
 
 /// Ensure skills directory exists and install default skills if needed

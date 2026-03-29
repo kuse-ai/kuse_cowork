@@ -43,7 +43,7 @@ const SkillsList: Component = () => {
                 <h4>How skills work:</h4>
                 <ol>
                   <li>Skills are stored in the app data directory for better compatibility</li>
-                  <li>On first run, skills are automatically migrated from ~/.kuse-cowork/skills/</li>
+                  <li>If you used a previous version, you may need to manually copy skills from ~/.kuse_cowork/skills/</li>
                   <li>Each skill is a folder with a SKILL.md file containing instructions</li>
                   <li>Skills include PDF, DOCX, XLSX, and PPTX processing capabilities</li>
                   <li>Skills are automatically mounted in Docker containers at /skills</li>
@@ -99,9 +99,9 @@ const SkillsList: Component = () => {
               <p><strong>Usage:</strong> Skills are automatically available to Claude when processing relevant file types.</p>
               <p><strong>Platform paths:</strong></p>
               <ul>
-                <li>macOS: ~/Library/Application Support/kuse-cowork/skills/</li>
-                <li>Windows: %APPDATA%\kuse-cowork\skills\</li>
-                <li>Linux: ~/.local/share/kuse-cowork/skills/</li>
+                <li>macOS: ~/Library/Application Support/kuse_cowork/skills/</li>
+                <li>Windows: %APPDATA%\kuse_cowork\skills\</li>
+                <li>Linux: ~/.local/share/kuse_cowork/skills/</li>
               </ul>
             </div>
           </div>
