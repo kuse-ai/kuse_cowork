@@ -116,7 +116,14 @@ export const PROVIDER_PRESETS: Record<string, ProviderConfig> = {
     authType: "bearer",
     description: "Multi-model aggregation, pay-as-you-go",
   },
-  together: {
+  tokenmix: {
+    id: "tokenmix",
+    name: "TokenMix",
+    baseUrl: "https://api.tokenmix.ai/v1",
+    apiFormat: "openai-compatible",
+    authType: "bearer",
+    description: "171 AI models from 14 providers, pay-as-you-go",
+  },  together: {
     id: "together",
     name: "Together AI",
     baseUrl: "https://api.together.xyz/v1",
@@ -196,6 +203,13 @@ export const AVAILABLE_MODELS = [
   { id: "openai/gpt-4o", name: "GPT-4o", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "deepseek/deepseek-r1", name: "DeepSeek R1", description: "via OpenRouter", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
+
+  // ========== TokenMix ==========
+  { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", description: "via TokenMix", provider: "tokenmix", baseUrl: "https://api.tokenmix.ai/v1" },
+  { id: "claude-opus-4-6", name: "Claude Opus 4.6", description: "via TokenMix", provider: "tokenmix", baseUrl: "https://api.tokenmix.ai/v1" },
+  { id: "gpt-5.4", name: "GPT-5.4", description: "via TokenMix", provider: "tokenmix", baseUrl: "https://api.tokenmix.ai/v1" },
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "via TokenMix", provider: "tokenmix", baseUrl: "https://api.tokenmix.ai/v1" },
+  { id: "deepseek-chat", name: "DeepSeek Chat", description: "via TokenMix", provider: "tokenmix", baseUrl: "https://api.tokenmix.ai/v1" },
 
   // ========== Together AI ==========
   { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", name: "Llama 3.3 70B Turbo", description: "via Together", provider: "together", baseUrl: "https://api.together.xyz/v1" },
