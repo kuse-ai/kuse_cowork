@@ -73,7 +73,8 @@ impl Settings {
             "google".to_string()
         } else if model_lower.contains("minimax") {
             "minimax".to_string()
-        } else if model_lower.starts_with("anthropic/") || model_lower.starts_with("openai/") || model_lower.starts_with("meta-llama/") || model_lower.starts_with("deepseek/") {
+        } else if model_lower.starts_with("anthropic/") || model_lower.starts_with("openai/") || model_lower.starts_with("meta-llama/") || model_lower.starts_with("deepseek/") 
+            || model_lower.starts_with("z-ai/") || model_lower.starts_with("minimax/") || model_lower.starts_with("moonshot/"){
             "openrouter".to_string()
         } else if model_lower.contains(":") {
             // Ollama format (e.g., llama3.3:latest)
