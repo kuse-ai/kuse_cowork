@@ -18,7 +18,7 @@
     "@tauri-apps/plugin-fs": "^2.0.0",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "@tauri-apps/plugin-store": "^2.0.0",
-    "solid-js": "^1.8.0"
+    "solid-js": "^1.9.15"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
