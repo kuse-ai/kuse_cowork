@@ -29,6 +29,7 @@ const MCPSettings: Component<MCPSettingsProps> = (props) => {
     oauthClientId: "",
     oauthClientSecret: "",
   });
+  const [customHeaders, setCustomHeaders] = createSignal<{key: string; value: string}[]>([]);
 
   const mergedData = createMemo(() => {
     const statusMap = new Map(statuses().map(s => [s.id, s]));
@@ -65,6 +66,7 @@ const MCPSettings: Component<MCPSettingsProps> = (props) => {
       oauthClientId: "",
       oauthClientSecret: "",
     });
+    setCustomHeaders([]);
     setEditingServer(null);
     setShowAddForm(false);
   };
@@ -76,6 +78,11 @@ const MCPSettings: Component<MCPSettingsProps> = (props) => {
       oauthClientId: server.oauth_client_id || "",
       oauthClientSecret: server.oauth_client_secret || "",
     });
+    setCustomHeaders(
+      server.custom_headers
+        ? Object.entries(server.custom_headers).map(([key, value]) => ({ key, value }))
+        : []
+    );
     setEditingServer(server);
     setShowAddForm(true);
   };
@@ -94,12 +101,19 @@ const MCPSettings: Component<MCPSettingsProps> = (props) => {
         return;
       }
 
+      // Build custom headers record from key-value pairs
+      const headers = customHeaders()
+        .map(h => ({ key: h.key.trim(), value: h.value.trim() }))
+        .filter(h => h.key && h.value)
+        .reduce((acc, h) => ({ ...acc, [h.key]: h.value }), {} as Record<string, string>);
+
       const config: MCPServerConfig = {
         id: editingServer()?.id || crypto.randomUUID(),
         name: data.name,
         server_url: data.serverUrl,
         oauth_client_id: data.oauthClientId.trim() || undefined,
         oauth_client_secret: data.oauthClientSecret.trim() || undefined,
+        custom_headers: Object.keys(headers).length > 0 ? headers : undefined,
         enabled: editingServer()?.enabled ?? true,
         created_at: editingServer()?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -215,6 +229,52 @@ const MCPSettings: Component<MCPSettingsProps> = (props) => {
                     placeholder="your-oauth-client-secret"
                   />
                 </div>
+
+                <div class="form-group">
+                  <label>Custom Headers (optional)</label>
+                  <div class="custom-headers-list">
+                    <For each={customHeaders()}>
+                      {(header, index) => (
+                        <div class="header-row">
+                          <input
+                            type="text"
+                            value={header.key}
+                            onInput={(e) => {
+                              const updated = [...customHeaders()];
+                              updated[index()] = { ...updated[index()], key: e.currentTarget.value };
+                              setCustomHeaders(updated);
+                            }}
+                            placeholder="Header name"
+                          />
+                          <input
+                            type="password"
+                            value={header.value}
+                            onInput={(e) => {
+                              const updated = [...customHeaders()];
+                              updated[index()] = { ...updated[index()], value: e.currentTarget.value };
+                              setCustomHeaders(updated);
+                            }}
+                            placeholder="Header value"
+                          />
+                          <button
+                            class="remove-header-btn"
+                            onClick={() => {
+                              setCustomHeaders(customHeaders().filter((_, i) => i !== index()));
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </For>
+                    <button
+                      class="add-header-btn"
+                      onClick={() => setCustomHeaders([...customHeaders(), { key: "", value: "" }])}
+                    >
+                      + Add Header
+                    </button>
+                  </div>
+                </div>
               </div>
             </details>
 
@@ -269,6 +329,12 @@ const MCPSettings: Component<MCPSettingsProps> = (props) => {
                       {server.oauth_client_id && (
                         <div class="detail-row">
                           <strong>OAuth:</strong> Configured
+                        </div>
+                      )}
+
+                      {server.custom_headers && Object.keys(server.custom_headers).length > 0 && (
+                        <div class="detail-row">
+                          <strong>Custom Headers:</strong> {Object.keys(server.custom_headers).length} configured
                         </div>
                       )}
 

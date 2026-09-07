@@ -14,6 +14,7 @@ export interface Settings {
   providerKeys: Record<string, string>;  // Provider-specific API keys
   openaiOrganization?: string;  // Optional OpenAI Organization ID
   openaiProject?: string;  // Optional OpenAI Project ID
+  theme: string;  // "light", "dark", or "system"
 }
 
 // Provider configuration type
@@ -224,6 +225,7 @@ const DEFAULT_SETTINGS: Settings = {
   maxTokens: 4096,
   temperature: 0.7,
   providerKeys: {},
+  theme: "system",
 };
 
 // Get provider ID from model
@@ -262,6 +264,7 @@ function fromApiSettings(api: ApiSettings): Settings {
     providerKeys,
     openaiOrganization: api.openai_organization,
     openaiProject: api.openai_project,
+    theme: api.theme || "system",
   };
 }
 
@@ -282,7 +285,39 @@ function toApiSettings(settings: Settings): ApiSettings {
     provider_keys: providerKeys,
     openai_organization: settings.openaiOrganization,
     openai_project: settings.openaiProject,
+    theme: settings.theme,
   };
+}
+
+// Theme application
+let mediaQueryCleanup: (() => void) | null = null;
+
+export function applyTheme(theme: string) {
+  // Clean up previous matchMedia listener
+  if (mediaQueryCleanup) {
+    mediaQueryCleanup();
+    mediaQueryCleanup = null;
+  }
+
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+
+  if (theme === "system") {
+    // Follow OS preference
+    const resolved = mq.matches ? "dark" : "light";
+    document.documentElement.dataset.theme = resolved;
+
+    // Listen for OS changes
+    const handler = (e: MediaQueryListEvent) => {
+      document.documentElement.dataset.theme = e.matches ? "dark" : "light";
+    };
+    mq.addEventListener("change", handler);
+    mediaQueryCleanup = () => mq.removeEventListener("change", handler);
+  } else if (theme === "dark") {
+    document.documentElement.dataset.theme = "dark";
+  } else {
+    // light — remove attribute so default (light) styles apply
+    delete document.documentElement.dataset.theme;
+  }
 }
 
 const [settings, setSettings] = createSignal<Settings>(DEFAULT_SETTINGS);
@@ -294,7 +329,9 @@ export async function loadSettings() {
   setIsLoading(true);
   try {
     const apiSettings = await getSettingsApi();
-    setSettings(fromApiSettings(apiSettings));
+    const loaded = fromApiSettings(apiSettings);
+    setSettings(loaded);
+    applyTheme(loaded.theme);
   } catch (e) {
     console.error("Failed to load settings:", e);
   } finally {

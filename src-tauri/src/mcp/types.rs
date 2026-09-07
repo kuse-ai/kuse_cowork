@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MCPServerConfig {
@@ -7,6 +8,7 @@ pub struct MCPServerConfig {
     pub server_url: String,
     pub oauth_client_id: Option<String>,
     pub oauth_client_secret: Option<String>,
+    pub custom_headers: Option<HashMap<String, String>>,
     pub enabled: bool,
     pub created_at: String,
     pub updated_at: String,

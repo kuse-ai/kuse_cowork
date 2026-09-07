@@ -2,7 +2,7 @@
   padding: 20px;
   height: 100vh;
   overflow-y: auto;
-  background: #f8f9fa;
+  background: var(--background);
 }
 
 .mcp-settings-header {
@@ -11,12 +11,12 @@
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--border);
 }
 
 .mcp-settings-header h2 {
   margin: 0;
-  color: #333;
+  color: var(--foreground);
   font-size: 24px;
 }
 
@@ -25,45 +25,46 @@
   gap: 10px;
 }
 
-.add-btn, .refresh-btn, .close-btn {
+.add-btn, .mcp-settings .refresh-btn, .mcp-settings .close-btn {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s;
+  transition: opacity 0.2s;
 }
 
 .add-btn {
-  background: #007bff;
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .add-btn:hover {
-  background: #0056b3;
+  opacity: 0.9;
 }
 
-.refresh-btn {
-  background: #6c757d;
-  color: white;
+.mcp-settings .refresh-btn {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid var(--border);
 }
 
-.refresh-btn:hover:not(:disabled) {
-  background: #545b62;
+.mcp-settings .refresh-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 
-.refresh-btn:disabled {
+.mcp-settings .refresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.close-btn {
-  background: #dc3545;
-  color: white;
+.mcp-settings .close-btn {
+  background: var(--destructive);
+  color: #fff;
 }
 
-.close-btn:hover {
-  background: #c82333;
+.mcp-settings .close-btn:hover {
+  opacity: 0.9;
 }
 
 .mcp-settings-content {
@@ -72,40 +73,43 @@
 
 /* Add Form */
 .add-form {
-  background: white;
+  background: var(--card);
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 30px;
+  border: 1px solid var(--border);
 }
 
 .add-form h3 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #333;
+  color: var(--foreground);
 }
 
-.form-group {
+.mcp-settings .form-group {
   margin-bottom: 15px;
 }
 
-.form-group label {
+.mcp-settings .form-group label {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  color: #555;
+  color: var(--muted-foreground);
 }
 
-.form-group input,
-.form-group textarea {
+.mcp-settings .form-group input,
+.mcp-settings .form-group textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 14px;
+  background: var(--background);
+  color: var(--foreground);
 }
 
-.form-group textarea {
+.mcp-settings .form-group textarea {
   resize: vertical;
   font-family: monospace;
 }
@@ -125,21 +129,22 @@
 }
 
 .save-btn {
-  background: #28a745;
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .save-btn:hover {
-  background: #218838;
+  opacity: 0.9;
 }
 
 .cancel-btn {
-  background: #6c757d;
-  color: white;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid var(--border);
 }
 
 .cancel-btn:hover {
-  background: #545b62;
+  background: var(--accent-hover);
 }
 
 /* Radio Group */
@@ -156,6 +161,7 @@
   font-weight: normal;
   cursor: pointer;
   padding: 8px 0;
+  color: var(--foreground);
 }
 
 .radio-label input[type="radio"] {
@@ -166,22 +172,23 @@
 /* Advanced Settings */
 .advanced-settings {
   margin-top: 15px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
 }
 
 .advanced-settings summary {
   padding: 12px 15px;
-  background: #f8f9fa;
+  background: var(--accent);
   cursor: pointer;
   font-weight: 500;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--border);
   user-select: none;
+  color: var(--foreground);
 }
 
 .advanced-settings[open] summary {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--border);
 }
 
 .advanced-content {
@@ -197,21 +204,21 @@
 }
 
 /* Form Hints */
-.form-group small.hint {
+.mcp-settings .form-group small.hint {
   display: block;
   margin-top: 5px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
 /* Warning Text */
 .warning-text {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.3);
   border-radius: 6px;
   padding: 15px;
   margin-bottom: 20px;
-  color: #856404;
+  color: var(--foreground);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -219,13 +226,13 @@
 /* Servers List */
 .servers-list h3 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--foreground);
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--muted-foreground);
 }
 
 .empty-state p {
@@ -239,11 +246,11 @@
 }
 
 .server-card {
-  background: white;
+  background: var(--card);
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e9ecef;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
 }
 
 .server-header {
@@ -255,13 +262,13 @@
 
 .server-info h4 {
   margin: 0 0 5px 0;
-  color: #333;
+  color: var(--foreground);
   font-size: 18px;
 }
 
 .server-info p {
   margin: 0;
-  color: #666;
+  color: var(--muted-foreground);
   font-size: 14px;
 }
 
@@ -274,23 +281,23 @@
 }
 
 .status-badge.green {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
 }
 
 .status-badge.orange {
-  background: #fff3cd;
-  color: #856404;
+  background: rgba(255, 193, 7, 0.15);
+  color: #b8860b;
 }
 
 .status-badge.red {
-  background: #f8d7da;
-  color: #721c24;
+  background: rgba(220, 53, 69, 0.15);
+  color: var(--destructive);
 }
 
 .status-badge.gray {
-  background: #e2e6ea;
-  color: #6c757d;
+  background: var(--accent);
+  color: var(--muted-foreground);
 }
 
 .server-details {
@@ -300,11 +307,11 @@
 .detail-row {
   margin-bottom: 8px;
   font-size: 14px;
-  color: #555;
+  color: var(--muted-foreground);
 }
 
 .detail-row strong {
-  color: #333;
+  color: var(--foreground);
 }
 
 .server-actions {
@@ -313,32 +320,32 @@
   flex-wrap: wrap;
 }
 
-.toggle-btn, .edit-btn, .delete-btn {
+.toggle-btn, .edit-btn, .mcp-settings .delete-btn {
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: opacity 0.2s;
 }
 
 .toggle-btn.connect {
-  background: #28a745;
-  color: white;
+  background: var(--success);
+  color: #fff;
 }
 
 .toggle-btn.connect:hover:not(:disabled) {
-  background: #218838;
+  opacity: 0.9;
 }
 
 .toggle-btn.disconnect {
-  background: #ffc107;
+  background: rgba(255, 193, 7, 0.8);
   color: #212529;
 }
 
 .toggle-btn.disconnect:hover:not(:disabled) {
-  background: #e0a800;
+  opacity: 0.9;
 }
 
 .toggle-btn:disabled {
@@ -347,19 +354,70 @@
 }
 
 .edit-btn {
-  background: #007bff;
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .edit-btn:hover {
-  background: #0056b3;
+  opacity: 0.9;
 }
 
-.delete-btn {
-  background: #dc3545;
-  color: white;
+.mcp-settings .delete-btn {
+  background: var(--destructive);
+  color: #fff;
 }
 
-.delete-btn:hover {
-  background: #c82333;
+.mcp-settings .delete-btn:hover {
+  opacity: 0.9;
+}
+
+/* Custom Headers */
+.custom-headers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.header-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.remove-header-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--destructive);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--destructive);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.remove-header-btn:hover {
+  background: var(--destructive);
+  color: #fff;
+}
+
+.add-header-btn {
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.add-header-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
