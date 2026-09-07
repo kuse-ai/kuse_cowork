@@ -1394,6 +1394,25 @@ pub async fn execute_mcp_tool(
     Ok(state.mcp_manager.execute_tool(&call).await)
 }
 
+/// Discover available models from an OpenAI-compatible endpoint
+#[command]
+pub async fn discover_models(
+    base_url: String,
+    api_key: Option<String>,
+) -> Result<Vec<String>, CommandError> {
+    use crate::llm_client::LLMClient;
+
+    let client = LLMClient::new(
+        api_key.unwrap_or_default(),
+        Some(base_url),
+        Some("custom"),
+        None,
+    );
+
+    client.discover_models().await
+        .map_err(|e| CommandError { message: e.to_string() })
+}
+
 /// Convert Claude API request format to OpenAI format
 fn convert_to_openai_format(
     request: &crate::agent::message_builder::ClaudeApiRequest,
