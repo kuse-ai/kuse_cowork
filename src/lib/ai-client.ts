@@ -768,7 +768,7 @@ const providers: Record<string, AIProvider> = {
 const openaiCompatibleProviders = [
   "ollama", "localai",
   "vllm", "tgi", "sglang",
-  "openrouter", "together", "groq", "deepseek", "siliconflow",
+  "openrouter", "together", "runcrate", "groq", "deepseek", "siliconflow",
   "custom"
 ];
 

@@ -124,6 +124,14 @@ export const PROVIDER_PRESETS: Record<string, ProviderConfig> = {
     authType: "bearer",
     description: "Open source model cloud service",
   },
+  runcrate: {
+    id: "runcrate",
+    name: "Runcrate",
+    baseUrl: "https://api.runcrate.ai/v1",
+    apiFormat: "openai-compatible",
+    authType: "bearer",
+    description: "AI cloud, OpenAI-compatible API for open-weight models",
+  },
   groq: {
     id: "groq",
     name: "Groq",
@@ -200,6 +208,11 @@ export const AVAILABLE_MODELS = [
   // ========== Together AI ==========
   { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", name: "Llama 3.3 70B Turbo", description: "via Together", provider: "together", baseUrl: "https://api.together.xyz/v1" },
   { id: "Qwen/Qwen2.5-72B-Instruct-Turbo", name: "Qwen 2.5 72B Turbo", description: "via Together", provider: "together", baseUrl: "https://api.together.xyz/v1" },
+
+  // ========== Runcrate ==========
+  { id: "deepseek-ai/DeepSeek-V4-Flash", name: "DeepSeek V4 Flash", description: "via Runcrate", provider: "runcrate", baseUrl: "https://api.runcrate.ai/v1" },
+  { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", name: "Llama 3.3 70B Turbo", description: "via Runcrate", provider: "runcrate", baseUrl: "https://api.runcrate.ai/v1" },
+  { id: "Qwen/Qwen3-235B-A22B-Instruct-2507", name: "Qwen3 235B Instruct", description: "via Runcrate", provider: "runcrate", baseUrl: "https://api.runcrate.ai/v1" },
 
   // ========== Groq ==========
   { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", description: "via Groq (ultra-fast)", provider: "groq", baseUrl: "https://api.groq.com/openai/v1" },

@@ -145,6 +145,13 @@ impl ProviderConfig {
                 api_format: ApiFormat::OpenAICompatible,
                 auth_type: AuthType::Bearer,
             },
+            "runcrate" => Self {
+                id: "runcrate".to_string(),
+                name: "Runcrate".to_string(),
+                base_url: "https://api.runcrate.ai/v1".to_string(),
+                api_format: ApiFormat::OpenAICompatible,
+                auth_type: AuthType::Bearer,
+            },
             "groq" => Self {
                 id: "groq".to_string(),
                 name: "Groq".to_string(),
