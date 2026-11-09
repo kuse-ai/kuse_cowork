@@ -72,7 +72,7 @@ const ModelSelector: Component<ModelSelectorProps> = (props) => {
     },
     aggregator: {
       name: "Aggregation Services",
-      providers: ["openrouter", "together", "groq", "siliconflow"]
+      providers: ["openrouter", "together", "runcrate", "groq", "siliconflow"]
     }
   };
 
